@@ -15,6 +15,8 @@ It acts as a complementary operational layer that:
 5. detects inconsistencies;
 6. creates explainable and actionable exceptions;
 7. optionally uses AI/JEV to interpret ambiguous cases.
+8. keeps a minimal canonical Product in PEEKio and initiates traceable,
+   simulated propagation to user-selected destination systems.
 
 Before implementing domain behavior, read the relevant files under `docs/`.
 
@@ -80,6 +82,10 @@ Initial canonical event types:
 
 Domain logic must not depend directly on SAP, TOTVS, Bling, Olist, marketplace, or other vendor-specific payload shapes.
 
+Outbound product create/update commands must also pass through destination
+adapters. Persist the command and each per-destination attempt/result inside
+PEEKio; only the external destination effect is simulated for the hackathon.
+
 ### 3.3 Expected versus observed state
 
 The system must distinguish:
@@ -138,7 +144,11 @@ The core MVP consists of:
 7. evidence presentation;
 8. recommendation presentation;
 9. AI/JEV explanation for ambiguous cases;
-10. a simple exception dashboard.
+10. a simple exception dashboard;
+11. minimal canonical Product create/edit and ProductChannelMapping;
+12. simulated create/update propagation to selected destinations, with
+    independent attempt status, returned external ID, failure evidence, and
+    retry history.
 
 ---
 
@@ -188,6 +198,8 @@ The following are outside the current hackathon MVP unless scope is explicitly c
 - WMS;
 - complete fiscal issuance;
 - generic marketplace hub;
+- complete product catalog/PIM, SEO, advanced media/enrichment, advanced
+  channel publishing, complex price tables, or advanced logistics rules;
 - general-purpose BI;
 - forecasting;
 - demand planning;
@@ -385,6 +397,11 @@ Do not silently mutate historical source events.
 
 Derived state may be recalculated from events when practical.
 
+Product propagation commands and destination attempts must be auditable per
+target. A retry appends an attempt and preserves prior results; a successful
+response records the returned external identifier on its
+ProductChannelMapping.
+
 ---
 
 ## 13. Time Handling
@@ -437,7 +454,9 @@ Prioritize tests for:
 - severity;
 - evidence collection;
 - exception lifecycle;
-- AI/JEV fallback behavior.
+- AI/JEV fallback behavior;
+- Product create/update propagation with independent destination outcomes,
+  partial success, returned external IDs, and retry history.
 
 Use deterministic fixtures.
 

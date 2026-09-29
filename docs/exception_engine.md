@@ -42,6 +42,13 @@ Everything consistent?
    Exception
 ```
 
+Failed product-propagation attempts are durable operational evidence linked to
+the canonical Product and destination. They remain visible for investigation
+and retry, and may be attached to an `OperationalException` through the normal
+exception/evidence path. This flow does not add a new canonical exception type
+by itself; any rule that creates an exception must preserve the existing
+evidence, lifecycle, and presentation contracts.
+
 ---
 
 ## 3. Detection strategy

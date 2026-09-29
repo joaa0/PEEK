@@ -246,6 +246,29 @@ Identifier for a specific sellable product or variation.
 
 ---
 
+## Product
+
+The minimum canonical operational product record created and maintained in
+PEEKio. It supports correlation and simulated outbound registration; it is not
+a complete catalog/PIM record. See `docs/domain_model.md` for its model.
+
+---
+
+## ProductChannelMapping
+
+The link between a canonical Product and one destination system, including the
+external product identifier returned after successful propagation.
+
+---
+
+## ProductPropagationAttempt
+
+An immutable record of one create/update attempt for one destination, including
+its status and success result or failure evidence. Retries create additional
+attempts.
+
+---
+
 ## WMS
 
 Warehouse Management System.

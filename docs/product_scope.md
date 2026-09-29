@@ -26,7 +26,45 @@ The MVP includes:
 10. evidence visualization;
 11. impact/context presentation;
 12. recommendation;
-13. optional AI/JEV explanation for ambiguous cases.
+13. optional AI/JEV explanation for ambiguous cases;
+14. canonical Product Master and channel/source mappings for operational identity;
+15. command-based inventory synchronization and fiscal orchestration through adapters;
+16. operational views for product identity, stock synchronization, and fiscal status;
+17. centralized minimal Product registration in PEEKio with simulated
+    per-destination propagation.
+
+### 2.1 Operational master data and orchestration
+
+Product Master holds the minimum canonical product identity needed to correlate
+events and orchestrator commands. Channel/source mappings connect external item
+identifiers to that identity. This is an operational registry, not a content
+catalog or PIM.
+
+Orchestrators accept explicit commands, dispatch them through adapters, and
+record attempts and external confirmations as auditable operational state.
+Sending a command is not proof of success; only a correlated external
+confirmation establishes completion. Retry/reprocessing must be explicit,
+idempotent, and traceable.
+
+Inventory synchronization may be initiated by PEEKio, while the connected
+inventory/channel system remains authoritative for its resulting stock state.
+Fiscal orchestration may request work from an external fiscal system, while
+document issuance and legal validation remain external responsibilities.
+
+The product-registration flow also lets an operator create/update a minimal
+canonical Product once in PEEKio and select one or more destination systems.
+PEEKio creates an independent propagation command and traceable attempt for
+each destination. Hackathon destination adapters simulate external create/update
+operations; the Product, mappings, attempts, results, and retry history are
+persisted by the application. A successful response may supply the external
+identifier stored on the corresponding ProductChannelMapping. Failures remain
+visible per destination with status and evidence for investigation and retry.
+
+The minimum Product data may include name, internal SKU, basic description,
+price, optional EAN/GTIN, basic category, and fiscal fields required by a
+defined flow. This does not add SEO, advanced media, complete channel-specific
+categories, complex price tables, advanced logistics rules, or full content
+enrichment.
 
 ---
 
@@ -289,7 +327,10 @@ The following must not be implemented as part of the MVP unless scope is explici
 - WMS;
 - complete fiscal issuance;
 - generic marketplace hub;
-- full product catalog/PIM;
+- complete product catalog/PIM (the scoped Product Master is a minimal
+  operational record with simulated per-destination propagation; it excludes
+  content enrichment and advanced channel publishing);
+- real marketplace/catalog integrations;
 - general-purpose BI;
 - forecasting;
 - demand planning;
@@ -347,7 +388,12 @@ At minimum, the demo should show:
 7. evidence being available;
 8. expected versus observed state being visible;
 9. recommendation being displayed;
-10. the exception being acknowledged or resolved.
+10. the exception being acknowledged or resolved;
+11. an operator initiating a stock/fiscal operation, seeing its confirmation
+    or failure, and investigating an exception when confirmation is absent;
+12. retry/reprocessing with visible attempt history.
+13. one canonical Product propagated to multiple simulated destinations, with
+    independent success/failure, external identifiers, and a traceable retry.
 
 ---
 

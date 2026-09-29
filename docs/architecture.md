@@ -11,13 +11,6 @@ Compose initially runs only PostgreSQL locally. An external LLM API is called
 through an isolated intelligence module. See `technical_decisions.md` for
 accepted decisions and remaining choices.
 
-Backend Core now has a Maven/Spring Boot project under `backend/`, with domain
-validation/calculation in `events/` and `operational_state/`, application
-services and JPA repositories for events/products/exceptions, and HTTP
-controllers in `presentation/`. Flyway creates the initial PostgreSQL schema;
-Hibernate uses `ddl-auto: validate`. The Event Engine, source adapters,
-outbound orchestrators, frontend, and intelligence layer remain later work.
-
 The core concept is:
 
 ```text
@@ -40,6 +33,30 @@ AI/JEV Contextualization
 Presentation
 ```
 
+Operational execution adds a command path alongside event ingestion:
+
+```text
+Operator / deterministic rule
+  ↓ command with product and channel mapping
+Product, Inventory, or Fiscal Orchestrator
+  ↓ adapter dispatch + attempt history
+External or simulated system
+  ↓ confirmation event / document reference
+Operational state → reconciliation (E01 / E03) → evidence and UI
+```
+
+The Product Master and Channel Mapping module resolves canonical product
+identity for commands, events, and operational views. It stores only the
+minimum identity and external identifiers needed for correlation.
+
+Product registration has a separate outbound command path: the operator saves
+the canonical Product, selects targets, and PEEKio dispatches one
+create/update command per target through a simulated destination adapter.
+Each target's attempt and result are persisted independently. Success may
+return an `external_id` that updates its ProductChannelMapping; failure keeps
+status and evidence for investigation and retry. The Product and propagation
+history are real application data even though destination effects are mocked.
+
 ---
 
 ## 2. System boundary
@@ -56,7 +73,11 @@ Presentation
 - evidence aggregation;
 - recommendation generation;
 - optional AI/JEV layer;
-- exception UI/API.
+- exception UI/API;
+- minimal Product Master and channel/source mapping;
+- inventory and fiscal orchestration command/attempt tracking;
+- canonical Product registration and per-destination propagation commands,
+  attempts, mappings, and results.
 
 ### Outside the application
 
@@ -70,7 +91,9 @@ Presentation
 - real accounting/fiscal issuance;
 - production systems.
 
-For the MVP, external systems may be simulated.
+For the MVP, external systems may be simulated. Orchestrators may dispatch to
+simulated adapters, but PEEKio does not become the inventory or fiscal system
+of record and does not implement legal fiscal issuance.
 
 ---
 
@@ -161,6 +184,11 @@ Responsibilities:
 - reject unsupported/malformed payloads explicitly.
 
 Adapters must not contain reconciliation rules.
+
+Outbound destination adapters translate a canonical Product create/update
+command into a destination-specific request and normalize its success/failure
+into an application result. In the hackathon these adapters are simulated.
+They must not place channel-specific publication rules in the Product domain.
 
 Example:
 

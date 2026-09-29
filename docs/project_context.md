@@ -69,6 +69,12 @@ The product is:
 
 Existing systems remain responsible for transactional processing.
 
+For the product-registration-unification part of Problemática 1, PEEKio also
+keeps a minimal canonical operational product record and initiates its
+propagation to user-selected systems through adapters. Those systems remain
+responsible for their own resulting records. This bounded registration flow
+does not make PEEKio a complete catalog or marketplace hub.
+
 This product is responsible for:
 
 - observation;
@@ -78,6 +84,8 @@ This product is responsible for:
 - exception detection;
 - evidence collection;
 - recommendation.
+- minimal canonical product registration, cross-system mapping, and traceable
+  propagation attempts.
 
 ---
 

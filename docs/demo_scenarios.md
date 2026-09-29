@@ -17,6 +17,12 @@ The preferred structure is:
 
 Avoid a demo based only on static dashboard screens.
 
+The expanded demo must make operational execution observable: show a command
+initiated by PEEKio, the external/simulated system response, and the resulting
+confirmation or exception. A submitted command is not shown as successful
+until a correlated confirmation is received. Include a controlled retry with
+its attempt history.
+
 ---
 
 ## 2. Demo Scenario A — Stock synchronization failure
@@ -46,7 +52,12 @@ quantity=5
 Expected stock = 95
 ```
 
-### Step 2 — Deliberately omit stock update
+### Step 2 — PEEKio dispatches inventory synchronization
+
+Dispatch the stock command using the canonical product and its channel
+mapping. The simulated inventory adapter records the request.
+
+### Step 3 — Deliberately omit confirmation
 
 Do **not** emit the expected:
 
@@ -54,7 +65,7 @@ Do **not** emit the expected:
 STOCK_UPDATED
 ```
 
-### Step 3 — Trigger timeout
+### Step 4 — Trigger timeout
 
 After the configured interval:
 
@@ -63,6 +74,10 @@ E01 / STOCK_SYNC_FAILURE
 ```
 
 should be created.
+
+The investigation shows the command, attempt, timeout, expected and observed
+stock, and the missing confirmation. A retry is explicit and produces another
+traceable attempt.
 
 ### Investigation view
 
@@ -395,4 +410,28 @@ The MVP is demo-ready when:
 - no alert depends exclusively on AI;
 - AI failure does not break the demo;
 - exception lifecycle works at least at `OPEN -> RESOLVED`;
-- demo data can be reset quickly.
+- demo data can be reset quickly;
+- centralized product registration can be propagated to multiple simulated
+  destinations, with independent outcomes and a traceable retry after failure.
+
+## 10. Demo Scenario E — Central product registration and propagation
+
+Create Product `CAM-001` once in PEEKio with the minimum required product
+fields, then select ERP, Mercado Livre, and Shopee as destinations. All three
+destinations use simulated adapters.
+
+Expected sequence:
+
+1. ERP succeeds and returns a simulated `external_id`; its
+   `ProductChannelMapping` is saved.
+2. Mercado Livre succeeds independently and saves its own simulated
+   `external_id` mapping.
+3. Shopee fails; its status and attempt evidence remain visible alongside the
+   two successful destinations.
+4. The operator retries the Shopee destination without deleting its failed
+   attempt.
+5. Shopee succeeds and its `ProductChannelMapping` receives the returned
+   simulated `external_id`.
+
+This scenario demonstrates centralized registration and controlled outbound
+orchestration. It does not require real ERP, marketplace, or e-commerce APIs.
