@@ -55,7 +55,7 @@ Read:
 
 ## Repository layout
 
-The Backend Core project is available under `backend/`. The frontend has not
+The Backend Core and Integrations & Event Engine are available under `backend/`. The frontend has not
 been scaffolded yet. The selected layout is:
 
 ```text
@@ -80,7 +80,7 @@ been scaffolded yet. The selected layout is:
 - AI: external LLM API behind the backend intelligence module, with a
   deterministic fallback when unavailable.
 
-## Backend Core development
+## Backend development
 
 Prerequisites: JDK 21 or newer (the Maven compiler emits Java 21 bytecode),
 Maven 3.9+, and PostgreSQL 16+. Docker Compose can provide PostgreSQL:

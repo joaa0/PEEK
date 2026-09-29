@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.peek.core.products.ProductService;
+import io.peek.core.orchestration.CommandConfirmationService;
 import io.peek.core.shared.ConflictException;
 import io.peek.core.shared.NotFoundException;
 import java.security.MessageDigest;
@@ -25,13 +26,16 @@ public class EventService {
     private final ProductService products;
     private final ObjectMapper json;
     private final Clock clock;
+    private final CommandConfirmationService confirmations;
 
-    public EventService(EventRepository repository, EventWriter writer, ProductService products, ObjectMapper json, Clock clock) {
+    public EventService(EventRepository repository, EventWriter writer, ProductService products, ObjectMapper json,
+                        Clock clock, CommandConfirmationService confirmations) {
         this.repository = repository;
         this.writer = writer;
         this.products = products;
         this.json = json;
         this.clock = clock;
+        this.confirmations = confirmations;
     }
 
     public record IngestResult(NormalizedEvent event, boolean created) {}
@@ -40,7 +44,11 @@ public class EventService {
         EventType type = EventValidation.validate(input);
         String hash = hash(input);
         var existing = repository.findBySourceAndExternalEventId(input.source().trim(), input.externalEventId().trim());
-        if (existing.isPresent()) return duplicate(existing.get(), hash);
+        if (existing.isPresent()) {
+            IngestResult result = duplicate(existing.get(), hash);
+            confirmations.accept(result.event());
+            return result;
+        }
 
         UUID productId = input.productId();
         String sku = input.sku() == null || input.sku().isBlank() ? null : input.sku().trim();
@@ -75,13 +83,21 @@ public class EventService {
         entity.confirmed = Boolean.TRUE.equals(input.confirmed());
         entity.metadataJson = jsonText(input.metadata() == null ? Map.of() : new TreeMap<>(input.metadata()));
         entity.payloadHash = hash;
+        EventEntity saved;
         try {
-            return new IngestResult(toDomain(writer.append(entity)), true);
+            saved = writer.append(entity);
         } catch (DataIntegrityViolationException race) {
             return repository.findBySourceAndExternalEventId(entity.source, entity.externalEventId)
-                .map(found -> duplicate(found, hash))
+                .map(found -> {
+                    IngestResult result = duplicate(found, hash);
+                    confirmations.accept(result.event());
+                    return result;
+                })
                 .orElseThrow(() -> race);
         }
+        IngestResult result = new IngestResult(toDomain(saved), true);
+        confirmations.accept(result.event());
+        return result;
     }
 
     public NormalizedEvent get(UUID id) {

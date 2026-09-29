@@ -1,6 +1,7 @@
 package io.peek.core.presentation;
 
 import io.peek.core.events.UnsupportedEventTypeException;
+import io.peek.core.integrations.UnsupportedMockPayloadException;
 import io.peek.core.shared.ConflictException;
 import io.peek.core.shared.NotFoundException;
 import java.time.Instant;
@@ -25,6 +26,8 @@ public class ApiErrors {
     ResponseEntity<ApiError> header(MissingRequestHeaderException error) { return response(HttpStatus.BAD_REQUEST, "MISSING_HEADER", error.getHeaderName() + " is required"); }
     @ExceptionHandler(UnsupportedEventTypeException.class)
     ResponseEntity<ApiError> unsupported(UnsupportedEventTypeException error) { return response(HttpStatus.UNPROCESSABLE_ENTITY, "UNSUPPORTED_EVENT_TYPE", error.getMessage()); }
+    @ExceptionHandler(UnsupportedMockPayloadException.class)
+    ResponseEntity<ApiError> unsupportedMock(UnsupportedMockPayloadException error) { return response(HttpStatus.UNPROCESSABLE_ENTITY, "UNSUPPORTED_EXTERNAL_PAYLOAD", error.getMessage()); }
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<ApiError> missing(NotFoundException error) { return response(HttpStatus.NOT_FOUND, "NOT_FOUND", error.getMessage()); }
     @ExceptionHandler(ConflictException.class)
