@@ -13,6 +13,7 @@ public class AttemptEntity {
     @Id public UUID id;
     @Column(name = "command_id") public UUID commandId;
     @Column(name = "attempt_number") public int attemptNumber;
+    @Column(name = "idempotency_key") public String idempotencyKey;
     @Column(name = "dispatched_at") public Instant dispatchedAt;
     @Column(name = "responded_at") public Instant respondedAt;
     public String result;

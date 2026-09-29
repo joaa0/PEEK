@@ -25,12 +25,14 @@ public class ExceptionService {
     }
 
     public record EvidenceDraft(UUID eventId, String type, String source, String label, String value, Instant occurredAt) {}
-    public record ExceptionDraft(ExceptionCode code, UUID triggerEventId, Severity severity, String title,
+    public record ExceptionDraft(ExceptionCode code, UUID triggerEventId, UUID operationCommandId,
+                                 Severity severity, String title,
                                  UUID productId, String sku, String orderId, String expectedState,
                                  String observedState, String ruleParameter, String impact,
                                  String recommendation, List<EvidenceDraft> evidence) {}
     public record EvidenceView(UUID id, UUID eventId, String type, String source, String label, String value, Instant occurredAt) {}
-    public record ExceptionView(UUID id, ExceptionCode code, UUID triggerEventId, ExceptionStatus status,
+    public record ExceptionView(UUID id, ExceptionCode code, UUID triggerEventId, UUID operationCommandId,
+                                ExceptionStatus status,
                                 Severity severity, String title, Instant detectedAt, UUID productId,
                                 String sku, String orderId, String expectedState, String observedState,
                                 String ruleParameter, String impact, String recommendation,
@@ -45,13 +47,14 @@ public class ExceptionService {
     public ExceptionView createAt(ExceptionDraft draft, Instant detectedAt) {
         validate(draft);
         if (detectedAt == null) throw new IllegalArgumentException("detectedAt is required");
-        var existing = exceptions.findByCodeAndTriggerEventId(draft.code(), draft.triggerEventId());
+        var existing = existing(draft);
         if (existing.isPresent()) return view(existing.get());
         if (!events.existsById(draft.triggerEventId())) throw new NotFoundException("Trigger event not found");
         ExceptionEntity entity = new ExceptionEntity();
         entity.id = UUID.randomUUID();
         entity.code = draft.code();
         entity.triggerEventId = draft.triggerEventId();
+        entity.operationCommandId = draft.operationCommandId();
         entity.status = ExceptionStatus.OPEN;
         entity.severity = draft.severity();
         entity.title = draft.title();
@@ -91,6 +94,14 @@ public class ExceptionService {
     @Transactional(readOnly = true)
     public ExceptionView get(UUID id) { return view(require(id)); }
 
+    @Transactional(readOnly = true)
+    public List<ExceptionView> forProduct(UUID productId) {
+        if (productId == null) throw new IllegalArgumentException("productId is required");
+        Specification<ExceptionEntity> criteria = (root, query, cb) -> cb.equal(root.get("productId"), productId);
+        return exceptions.findAll(criteria, Sort.by(Sort.Direction.DESC, "detectedAt", "id"))
+            .stream().map(this::view).toList();
+    }
+
     @Transactional
     public ExceptionView resolve(UUID id, String note) {
         if (note == null || note.isBlank()) throw new IllegalArgumentException("Resolution note is required");
@@ -112,7 +123,8 @@ public class ExceptionService {
     private ExceptionView view(ExceptionEntity e) {
         List<EvidenceView> rows = evidence.findByExceptionIdOrderByPosition(e.id).stream()
             .map(row -> new EvidenceView(row.id, row.eventId, row.type, row.source, row.label, row.value, row.occurredAt)).toList();
-        return new ExceptionView(e.id, e.code, e.triggerEventId, e.status, e.severity, e.title, e.detectedAt,
+        return new ExceptionView(e.id, e.code, e.triggerEventId, e.operationCommandId, e.status,
+            e.severity, e.title, e.detectedAt,
             e.productId, e.sku, e.orderId, e.expectedState, e.observedState, e.ruleParameter,
             e.impact, e.recommendation, e.resolutionNote, e.resolvedAt, e.version, rows);
     }
@@ -127,6 +139,11 @@ public class ExceptionService {
                 throw new IllegalArgumentException("Evidence requires type, source, label and value");
             }
         }
+    }
+    private java.util.Optional<ExceptionEntity> existing(ExceptionDraft draft) {
+        return draft.operationCommandId() == null
+            ? exceptions.findByCodeAndTriggerEventIdAndOperationCommandIdIsNull(draft.code(), draft.triggerEventId())
+            : exceptions.findByCodeAndOperationCommandId(draft.code(), draft.operationCommandId());
     }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
 }

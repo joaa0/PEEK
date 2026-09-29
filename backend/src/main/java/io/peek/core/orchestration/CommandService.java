@@ -13,7 +13,9 @@ import io.peek.core.shared.NotFoundException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,22 +29,31 @@ public class CommandService {
     private final StockService stock;
     private final DemoConfigurationRepository configurations;
     private final Clock clock;
+    private final Map<CommandKind, OutboundCommandAdapter> outboundAdapters;
     private final CorrelationPolicy correlation = new CorrelationPolicy();
 
     public CommandService(CommandRepository commands, AttemptRepository attempts, EventService events,
-                          ProductService products, StockService stock, DemoConfigurationRepository configurations, Clock clock) {
+                          ProductService products, StockService stock, DemoConfigurationRepository configurations,
+                          Clock clock, List<OutboundCommandAdapter> outboundAdapters) {
         this.commands = commands; this.attempts = attempts; this.events = events; this.products = products;
         this.stock = stock; this.configurations = configurations; this.clock = clock;
+        this.outboundAdapters = new EnumMap<>(CommandKind.class);
+        for (OutboundCommandAdapter adapter : outboundAdapters) {
+            if (this.outboundAdapters.put(adapter.kind(), adapter) != null) {
+                throw new IllegalStateException("More than one outbound adapter for " + adapter.kind());
+            }
+        }
     }
 
     public record CommandInput(UUID triggerEventId, String channel, String idempotencyKey, boolean simulateFailure) {}
-    public record AttemptView(UUID id, int attemptNumber, Instant dispatchedAt, Instant respondedAt,
+    public record AttemptView(UUID id, int attemptNumber, String idempotencyKey, Instant dispatchedAt, Instant respondedAt,
                               String result, String externalRequestId, String errorCode, String errorMessage) {}
     public record CommandView(UUID id, CommandKind kind, String idempotencyKey, UUID triggerEventId,
                               UUID productId, UUID mappingId, String channel, String externalProductId,
                               String sku, String orderId, String movementId, BigDecimal requestedQuantity,
                               BigDecimal expectedStock, Instant requestedAt, Instant deadlineAt, CommandStatus status,
-                              UUID confirmationEventId, Instant confirmedAt, String externalDocumentId,
+                               UUID confirmationEventId, Instant confirmedAt, Instant confirmationOccurredAt,
+                               String externalDocumentId,
                               String lastErrorCode, long version, List<AttemptView> attempts) {}
     public record CreateResult(CommandView command, boolean created) {}
 
@@ -78,27 +89,32 @@ public class CommandService {
         command.triggerEventId = trigger.id(); command.productId = trigger.productId(); command.mappingId = mapping.id();
         command.channel = mapping.channel(); command.externalProductId = mapping.externalId(); command.sku = trigger.sku();
         command.orderId = trigger.orderId(); command.movementId = trigger.movementId();
-        command.requestedQuantity = trigger.quantity();
-        command.expectedStock = kind == CommandKind.INVENTORY_SYNC ? stock.forSku(trigger.sku()).expectedStock() : null;
         command.requestedAt = clock.instant();
+        command.requestedQuantity = trigger.quantity();
+        command.expectedStock = kind == CommandKind.INVENTORY_SYNC
+            ? stock.forSkuAsOf(trigger.sku(), command.requestedAt, command.requestedAt).expectedStock() : null;
         command.deadlineAt = command.requestedAt.plusSeconds(kind == CommandKind.INVENTORY_SYNC
             ? config.stockSyncTimeoutSeconds : config.fiscalTimeoutSeconds);
         command.status = CommandStatus.REQUESTED;
         commands.saveAndFlush(command);
-        dispatch(command, input.simulateFailure());
+        dispatch(command, "initial:" + command.idempotencyKey, input.simulateFailure());
         return new CreateResult(view(command), true);
     }
 
     @Transactional
-    public CommandView retry(UUID id, boolean simulateFailure) {
-        CommandEntity command = require(id);
+    public CommandView retry(UUID id, String idempotencyKey, boolean simulateFailure) {
+        if (blank(idempotencyKey)) throw new IllegalArgumentException("Retry idempotencyKey is required");
+        if (idempotencyKey.length() > 200) throw new IllegalArgumentException("Retry idempotencyKey exceeds maximum length");
+        String normalizedKey = idempotencyKey.trim();
+        CommandEntity command = requireForUpdate(id);
+        if (attempts.findByCommandIdAndIdempotencyKey(id, normalizedKey).isPresent()) return view(command);
         if (command.status != CommandStatus.FAILED && command.status != CommandStatus.TIMED_OUT)
             throw new ConflictException("Only failed or timed-out commands may be retried");
         var config = configurations.findById((short) 1).orElseThrow();
         command.deadlineAt = clock.instant().plusSeconds(command.kind == CommandKind.INVENTORY_SYNC
             ? config.stockSyncTimeoutSeconds : config.fiscalTimeoutSeconds);
         command.lastErrorCode = null;
-        dispatch(command, simulateFailure);
+        dispatch(command, normalizedKey, simulateFailure);
         return view(command);
     }
 
@@ -119,18 +135,24 @@ public class CommandService {
         }
     }
 
-    private void dispatch(CommandEntity command, boolean simulateFailure) {
+    private void dispatch(CommandEntity command, String idempotencyKey, boolean simulateFailure) {
         Instant now = clock.instant();
         AttemptEntity attempt = new AttemptEntity();
         attempt.id = UUID.randomUUID(); attempt.commandId = command.id;
         attempt.attemptNumber = Math.toIntExact(attempts.countByCommandId(command.id) + 1);
+        attempt.idempotencyKey = idempotencyKey;
         attempt.dispatchedAt = now; attempt.respondedAt = now;
-        if (simulateFailure) {
-            attempt.result = "FAILED"; attempt.errorCode = "MOCK_DISPATCH_FAILURE";
-            attempt.errorMessage = "Simulated outbound adapter failure";
+        OutboundCommandAdapter adapter = outboundAdapters.get(command.kind);
+        if (adapter == null) throw new IllegalStateException("No outbound adapter for " + command.kind);
+        var result = adapter.dispatch(new OutboundCommandAdapter.DispatchRequest(command.id, attempt.attemptNumber,
+            command.productId, command.mappingId, command.channel, command.externalProductId, command.sku,
+            command.orderId, command.movementId, command.requestedQuantity, command.expectedStock, simulateFailure));
+        if (!result.accepted()) {
+            attempt.result = "FAILED"; attempt.errorCode = result.errorCode();
+            attempt.errorMessage = result.errorMessage();
             command.status = CommandStatus.FAILED; command.lastErrorCode = attempt.errorCode;
         } else {
-            attempt.result = "ACCEPTED"; attempt.externalRequestId = "mock-" + command.id + "-" + attempt.attemptNumber;
+            attempt.result = "ACCEPTED"; attempt.externalRequestId = result.externalRequestId();
             command.status = CommandStatus.PENDING_CONFIRMATION;
         }
         attempts.saveAndFlush(attempt);
@@ -144,14 +166,18 @@ public class CommandService {
     private CommandEntity require(UUID id) {
         return commands.findById(id).orElseThrow(() -> new NotFoundException("Command not found"));
     }
+    private CommandEntity requireForUpdate(UUID id) {
+        return commands.findByIdForUpdate(id).orElseThrow(() -> new NotFoundException("Command not found"));
+    }
     private CommandView view(CommandEntity c) {
         var history = attempts.findByCommandIdOrderByAttemptNumber(c.id).stream()
-            .map(a -> new AttemptView(a.id, a.attemptNumber, a.dispatchedAt, a.respondedAt,
+            .map(a -> new AttemptView(a.id, a.attemptNumber, a.idempotencyKey, a.dispatchedAt, a.respondedAt,
                 a.result, a.externalRequestId, a.errorCode, a.errorMessage)).toList();
         return new CommandView(c.id, c.kind, c.idempotencyKey, c.triggerEventId, c.productId,
             c.mappingId, c.channel, c.externalProductId, c.sku, c.orderId, c.movementId,
             c.requestedQuantity, c.expectedStock, c.requestedAt, c.deadlineAt, c.status,
-            c.confirmationEventId, c.confirmedAt, c.externalDocumentId, c.lastErrorCode, c.version, history);
+            c.confirmationEventId, c.confirmedAt, c.confirmationOccurredAt, c.externalDocumentId,
+            c.lastErrorCode, c.version, history);
     }
     private static boolean blank(String text) { return text == null || text.isBlank(); }
 }

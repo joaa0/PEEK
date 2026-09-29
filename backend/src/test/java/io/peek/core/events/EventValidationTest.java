@@ -32,4 +32,12 @@ class EventValidationTest {
         assertThrows(IllegalArgumentException.class, () -> EventValidation.validate(input("SALE_CONFIRMED", BigDecimal.ZERO, "O1", null, null, null)));
         assertThrows(IllegalArgumentException.class, () -> EventValidation.validate(input("PHYSICAL_COUNT", BigDecimal.ONE, null, null, null, null)));
     }
+
+    @Test void rejectsValuesThatWouldOverflowDatabaseContract() {
+        EventInput longSource = new EventInput("x".repeat(101), "evt-1", "SALE_CONFIRMED", time,
+            null, "SKU-1", null, "O1", null, null, null, BigDecimal.ONE, null, null, Map.of());
+        assertThrows(IllegalArgumentException.class, () -> EventValidation.validate(longSource));
+        assertThrows(IllegalArgumentException.class, () -> EventValidation.validate(
+            input("SALE_CONFIRMED", new BigDecimal("1.0001"), "O1", null, null, null)));
+    }
 }

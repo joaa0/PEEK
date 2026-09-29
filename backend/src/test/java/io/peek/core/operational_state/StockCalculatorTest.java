@@ -48,6 +48,8 @@ class StockCalculatorTest {
         assertEquals(0, snapshot.systemStock().compareTo(new BigDecimal("100")));
         assertEquals(0, snapshot.physicalStock().compareTo(new BigDecimal("93")));
         assertEquals(count.id(), snapshot.checkpointEventId());
+        assertEquals(count.id(), snapshot.baselineEventId());
+        assertEquals(baseline.id(), snapshot.initialBaselineEventId());
         assertEquals(List.of(count.id(), laterSale.id()), snapshot.usedEventIds());
         assertEquals(4, history.size());
         assertEquals(sale.id(), history.get(1).id());

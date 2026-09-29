@@ -16,11 +16,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
     private final ProductRepository products;
     private final MappingRepository mappings;
+    private final ProductAuditRepository productAudit;
+    private final MappingAuditRepository mappingAudit;
     private final Clock clock;
 
-    public ProductService(ProductRepository products, MappingRepository mappings, Clock clock) {
+    public ProductService(ProductRepository products, MappingRepository mappings,
+                          ProductAuditRepository productAudit, MappingAuditRepository mappingAudit, Clock clock) {
         this.products = products;
         this.mappings = mappings;
+        this.productAudit = productAudit;
+        this.mappingAudit = mappingAudit;
         this.clock = clock;
     }
 
@@ -30,6 +35,10 @@ public class ProductService {
     public record MappingInput(String channel, String externalId, MappingStatus status) {}
     public record MappingView(UUID id, UUID productId, String channel, String externalId, MappingStatus status,
                               Instant createdAt, Instant updatedAt, long version) {}
+    public record ProductAuditView(long revision, String operation, String sku, String name, String description,
+                                   BigDecimal price, String gtin, String category, boolean active, Instant recordedAt) {}
+    public record MappingAuditView(long revision, String operation, UUID productId, String channel,
+                                   String externalId, MappingStatus status, Instant recordedAt) {}
     public record CreateResult<T>(T value, boolean created) {}
 
     @Transactional
@@ -49,7 +58,9 @@ public class ProductService {
         product.active = true;
         product.createdAt = clock.instant();
         product.updatedAt = product.createdAt;
-        return new CreateResult<>(view(products.saveAndFlush(product)), true);
+        ProductEntity saved = products.saveAndFlush(product);
+        audit(saved, "CREATED");
+        return new CreateResult<>(view(saved), true);
     }
 
     @Transactional
@@ -62,6 +73,7 @@ public class ProductService {
             assign(product, input);
             product.updatedAt = clock.instant();
             products.flush();
+            audit(product, "UPDATED");
         }
         return view(product);
     }
@@ -80,7 +92,7 @@ public class ProductService {
         require(productId);
         validate(input);
         String channel = input.channel().trim();
-        String externalId = input.externalId() == null ? null : input.externalId().trim();
+        String externalId = normalizedExternalId(input.externalId());
         var sameChannel = mappings.findByProductIdAndChannel(productId, channel);
         if (sameChannel.isPresent()) {
             MappingEntity mapping = sameChannel.get();
@@ -100,16 +112,18 @@ public class ProductService {
         mapping.status = input.status();
         mapping.createdAt = clock.instant();
         mapping.updatedAt = mapping.createdAt;
-        return new CreateResult<>(view(mappings.saveAndFlush(mapping)), true);
+        MappingEntity saved = mappings.saveAndFlush(mapping);
+        audit(saved, "CREATED");
+        return new CreateResult<>(view(saved), true);
     }
 
     @Transactional
     public MappingView updateMapping(UUID mappingId, MappingInput input, long expectedVersion) {
         validate(input);
-        MappingEntity mapping = mappings.findById(mappingId).orElseThrow(() -> new NotFoundException("Mapping not found"));
+        MappingEntity mapping = requireMapping(mappingId);
         if (mapping.version != expectedVersion) throw new ConflictException("Mapping version is stale");
         if (!mapping.channel.equals(input.channel().trim())) throw new IllegalArgumentException("Channel cannot be changed");
-        String externalId = input.externalId() == null ? null : input.externalId().trim();
+        String externalId = normalizedExternalId(input.externalId());
         if (externalId != null) {
             mappings.findByChannelAndExternalId(mapping.channel, externalId)
                 .filter(found -> !found.id.equals(mapping.id))
@@ -120,6 +134,7 @@ public class ProductService {
             mapping.status = input.status();
             mapping.updatedAt = clock.instant();
             mappings.flush();
+            audit(mapping, "UPDATED");
         }
         return view(mapping);
     }
@@ -141,8 +156,26 @@ public class ProductService {
         return view(mapping);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductAuditView> productHistory(UUID productId) {
+        require(productId);
+        return productAudit.findByProductIdOrderByRevision(productId).stream()
+            .map(row -> new ProductAuditView(row.revision, row.operation, row.sku, row.name, row.description,
+                row.price, row.gtin, row.category, row.active, row.recordedAt)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MappingAuditView> mappingHistory(UUID mappingId) {
+        requireMapping(mappingId);
+        return mappingAudit.findByMappingIdOrderByRevision(mappingId).stream()
+            .map(row -> new MappingAuditView(row.revision, row.operation, row.productId, row.channel,
+                row.externalId, row.status, row.recordedAt)).toList();
+    }
+
     private ProductEntity require(UUID id) { return products.findById(id).orElseThrow(() -> new NotFoundException("Product not found")); }
+    private MappingEntity requireMapping(UUID id) { return mappings.findById(id).orElseThrow(() -> new NotFoundException("Mapping not found")); }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
+    private static String normalizedExternalId(String value) { return blank(value) ? null : value.trim(); }
     private static void validate(ProductInput input) {
         if (input == null || blank(input.sku()) || blank(input.name())) throw new IllegalArgumentException("sku and name are required");
         if (input.sku().length() > 100 || input.name().length() > 200) throw new IllegalArgumentException("sku or name exceeds maximum length");
@@ -179,5 +212,20 @@ public class ProductService {
     }
     private static MappingView view(MappingEntity m) {
         return new MappingView(m.id, m.productId, m.channel, m.externalId, m.status, m.createdAt, m.updatedAt, m.version);
+    }
+    private void audit(ProductEntity product, String operation) {
+        ProductAuditEntity row = new ProductAuditEntity();
+        row.id = UUID.randomUUID(); row.productId = product.id; row.revision = product.version;
+        row.operation = operation; row.sku = product.sku; row.name = product.name;
+        row.description = product.description; row.price = product.price; row.gtin = product.gtin;
+        row.category = product.category; row.active = product.active; row.recordedAt = clock.instant();
+        productAudit.saveAndFlush(row);
+    }
+    private void audit(MappingEntity mapping, String operation) {
+        MappingAuditEntity row = new MappingAuditEntity();
+        row.id = UUID.randomUUID(); row.mappingId = mapping.id; row.productId = mapping.productId;
+        row.revision = mapping.version; row.operation = operation; row.channel = mapping.channel;
+        row.externalId = mapping.externalId; row.status = mapping.status; row.recordedAt = clock.instant();
+        mappingAudit.saveAndFlush(row);
     }
 }

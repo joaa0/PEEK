@@ -19,6 +19,7 @@ import io.peek.core.products.ProductService;
 import io.peek.core.reconciliation.EvaluationService;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -101,17 +102,27 @@ class IntegrationEventEngineIT {
         var command = commands.create(CommandKind.INVENTORY_SYNC,
             new CommandService.CommandInput(sale.id(), f.inventoryChannel(), "sync-" + sale.id(), true)).command();
         assertEquals(CommandStatus.FAILED, command.status());
-        assertEquals("MOCK_DISPATCH_FAILURE", command.attempts().get(0).errorCode());
+        assertEquals("MOCK_INVENTORY_DISPATCH_FAILURE", command.attempts().get(0).errorCode());
         assertEquals(0, evaluator.evaluate(command.deadlineAt().minusNanos(1)).created());
         var result = evaluator.evaluate(command.deadlineAt().plusSeconds(1));
         assertEquals(1, result.created());
+        Map<?, ?> exception = http.getForObject("/api/v1/exceptions/" + result.exceptionIds().get(0), Map.class);
+        List<?> evidence = (List<?>) exception.get("evidence");
+        assertTrue(evidence.stream().map(row -> ((Map<?, ?>) row).get("label"))
+            .anyMatch("mappingId"::equals));
+        assertTrue(evidence.stream().map(row -> ((Map<?, ?>) row).get("value"))
+            .anyMatch("MOCK_INVENTORY_DISPATCH_FAILURE"::equals));
         assertEquals(0, evaluator.evaluate(command.deadlineAt().plusSeconds(1)).created());
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM operational_exception WHERE code = 'E01' AND trigger_event_id = ?", Integer.class, sale.id()));
-        var retried = commands.retry(command.id(), false);
+        var retried = commands.retry(command.id(), "retry-1", false);
         assertEquals(2, retried.attempts().size());
         assertEquals(CommandStatus.PENDING_CONFIRMATION, retried.status());
+        var replay = http.postForEntity("/api/v1/commands/" + command.id() + "/retry",
+            Map.of("idempotencyKey", "retry-1", "simulateFailure", false), Map.class);
+        assertEquals(HttpStatus.OK, replay.getStatusCode());
+        assertEquals(2, ((List<?>) replay.getBody().get("attempts")).size());
         assertEquals(HttpStatus.CONFLICT, http.postForEntity("/api/v1/commands/" + command.id() + "/retry",
-            Map.of("simulateFailure", false), Map.class).getStatusCode());
+            Map.of("idempotencyKey", "retry-2", "simulateFailure", false), Map.class).getStatusCode());
     }
 
     @Test void physicalCountAndReceiptUseBaselineToleranceAndReceiptCorrelation() {
@@ -136,6 +147,28 @@ class IntegrationEventEngineIT {
         assertEquals(0, evaluator.evaluate(at.plusSeconds(6)).created());
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM operational_exception WHERE code = 'E02' AND sku = ?", Integer.class, f.sku()));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM operational_exception WHERE code = 'E04' AND sku = ?", Integer.class, f.sku()));
+    }
+
+    @Test void failuresForTwoInventoryChannelsCreateIndependentExceptions() {
+        Fixture f = fixture();
+        String secondChannel = "inventory-second-" + UUID.randomUUID();
+        products.addMapping(f.productId(), new ProductService.MappingInput(secondChannel,
+            "SECOND-" + UUID.randomUUID(), MappingStatus.ACTIVE));
+        Instant now = Instant.now();
+        base(f, now.minusSeconds(10));
+        var sale = events.ingest(new EventInput(f.salesChannel(), "S-" + UUID.randomUUID(), "SALE_CONFIRMED",
+            now.minusSeconds(1), null, null, f.salesItem(), "O-MULTI", null, null, null,
+            BigDecimal.ONE, null, null, Map.of())).event();
+        var first = commands.create(CommandKind.INVENTORY_SYNC,
+            new CommandService.CommandInput(sale.id(), f.inventoryChannel(), "first-" + sale.id(), true)).command();
+        var second = commands.create(CommandKind.INVENTORY_SYNC,
+            new CommandService.CommandInput(sale.id(), secondChannel, "second-" + sale.id(), true)).command();
+        var evaluation = evaluator.evaluate(first.deadlineAt().isAfter(second.deadlineAt())
+            ? first.deadlineAt().plusSeconds(1) : second.deadlineAt().plusSeconds(1));
+        assertEquals(2, evaluation.created());
+        assertEquals(2, jdbc.queryForObject(
+            "SELECT count(*) FROM operational_exception WHERE code = 'E01' AND trigger_event_id = ?",
+            Integer.class, sale.id()));
     }
 
     @Test void equalityAtToleranceAndMatchingReceiptDoNotCreateExceptions() {
@@ -175,6 +208,9 @@ class IntegrationEventEngineIT {
         http.postForEntity("/api/v1/mock/fiscal", right, Map.class);
         assertEquals(CommandStatus.CONFIRMED, commands.get(command.id()).status());
         assertEquals("INV-3", commands.get(command.id()).externalDocumentId());
+        Map<?, ?> context = http.getForObject("/api/v1/products/" + f.productId() + "/context", Map.class);
+        assertEquals("CONFIRMED", ((Map<?, ?>) context.get("fiscal")).get("status"));
+        assertEquals(command.id().toString(), ((Map<?, ?>) context.get("fiscal")).get("commandId"));
         assertEquals(0, evaluator.evaluate(command.deadlineAt().plusSeconds(1)).created());
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, http.postForEntity("/api/v1/mock/physical",
             new MockPhysicalAdapter.PhysicalNotice("bad", "physical", "UNKNOWN", f.sku(), null,
@@ -189,8 +225,19 @@ class IntegrationEventEngineIT {
             null, null, Map.of())).event();
         var command = commands.create(CommandKind.FISCAL,
             new CommandService.CommandInput(exit.id(), f.fiscalChannel(), "fiscal-" + exit.id(), false)).command();
+        http.postForEntity("/api/v1/mock/fiscal", new MockFiscalAdapter.FiscalNotice(
+            "WRONG-" + UUID.randomUUID(), f.fiscalChannel(), "INV-WRONG", "OTHER", "M4",
+            f.fiscalItem(), BigDecimal.ONE, command.requestedAt().plusSeconds(1)), Map.class);
         assertEquals(0, evaluator.evaluate(command.deadlineAt().minusNanos(1)).created());
-        assertEquals(1, evaluator.evaluate(command.deadlineAt()).created());
+        var timeout = evaluator.evaluate(command.deadlineAt());
+        assertEquals(1, timeout.created());
+        List<?> fiscalExceptions = http.getForObject("/api/v1/exceptions?code=E03", List.class);
+        Map<?, ?> exception = (Map<?, ?>) fiscalExceptions.stream()
+            .map(row -> (Map<?, ?>) row)
+            .filter(row -> command.id().toString().equals(row.get("operationCommandId")))
+            .findFirst().orElseThrow();
+        assertTrue(((List<?>) exception.get("evidence")).stream()
+            .anyMatch(row -> "referenceMismatch".equals(((Map<?, ?>) row).get("label"))));
         assertEquals(CommandStatus.TIMED_OUT, commands.get(command.id()).status());
         var late = new MockFiscalAdapter.FiscalNotice("LATE-" + UUID.randomUUID(), f.fiscalChannel(),
             "INV-LATE", "O4", "M4", f.fiscalItem(), BigDecimal.ONE, command.deadlineAt().plusSeconds(1));
@@ -198,6 +245,28 @@ class IntegrationEventEngineIT {
         assertEquals(CommandStatus.CONFIRMED, commands.get(command.id()).status());
         assertEquals(0, evaluator.evaluate(command.deadlineAt().plusSeconds(2)).created());
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM operational_exception WHERE code = 'E03' AND trigger_event_id = ?", Integer.class, exit.id()));
+    }
+
+    @Test void fiscalDispatchFailureCanBeRetriedIdempotentlyWithHistory() {
+        Fixture f = fixture();
+        Instant now = Instant.now();
+        var exit = events.ingest(new EventInput("physical", "EXIT-" + UUID.randomUUID(), "PHYSICAL_EXIT",
+            now.minusSeconds(1), f.productId(), f.sku(), null, "O-RETRY", null, null, "M-RETRY",
+            BigDecimal.ONE, null, null, Map.of())).event();
+        var failed = commands.create(CommandKind.FISCAL,
+            new CommandService.CommandInput(exit.id(), f.fiscalChannel(), "fiscal-" + exit.id(), true)).command();
+        assertEquals(CommandStatus.FAILED, failed.status());
+        assertEquals("MOCK_FISCAL_DISPATCH_FAILURE", failed.attempts().get(0).errorCode());
+        var retried = commands.retry(failed.id(), "fiscal-retry-1", false);
+        assertEquals(CommandStatus.PENDING_CONFIRMATION, retried.status());
+        assertEquals(2, retried.attempts().size());
+        assertEquals(2, commands.retry(failed.id(), "fiscal-retry-1", false).attempts().size());
+        var invoice = new MockFiscalAdapter.FiscalNotice("F-" + UUID.randomUUID(), f.fiscalChannel(),
+            "INV-RETRY", "O-RETRY", "M-RETRY", f.fiscalItem(), BigDecimal.ONE,
+            retried.requestedAt().plusSeconds(1));
+        http.postForEntity("/api/v1/mock/fiscal", invoice, Map.class);
+        assertEquals(CommandStatus.CONFIRMED, commands.get(failed.id()).status());
+        assertEquals(2, commands.get(failed.id()).attempts().size());
     }
 
     @Test void fiscalMovementCorrelationCanBeConfiguredWithoutAcceptingWrongMovement() {
