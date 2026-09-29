@@ -29,35 +29,109 @@
           "}",
           "pm.collectionVariables.set('nowUtc', new Date().toISOString());",
           "pm.collectionVariables.set('evaluationAsOf', new Date(Date.now() + 86400000).toISOString());",
-          "const isolatedKeys = ['runId', 'productId', 'productVersion', 'saleEventId', 'inventoryCommandId', 'countEventId', 'e02ExceptionId', 'retrySaleId', 'retryCommandId', 'retryAsOf', 'exitEventId', 'fiscalCommandId', 'e01SaleId', 'e01CommandId', 'e01AsOf', 'e01LateAt', 'e03ExitId', 'e03CommandId', 'e03AsOf', 'e03LateAt', 'saleAt', 'e02BaselineAt', 'e02SaleAt', 'e02CountAt', 'e04ReceiptAt', 'e04RegistrationAt', 'retrySaleAt', 'fiscalExitAt', 'nowUtc', 'evaluationAsOf'];",
+          "const isolatedKeys = ['runId', 'productId', 'e02ProductId', 'e04ProductId', 'productVersion', 'saleEventId', 'inventoryCommandId', 'countEventId', 'e02ExceptionId', 'retrySaleId', 'retryCommandId', 'retryAsOf', 'exitEventId', 'fiscalCommandId', 'e01SaleId', 'e01CommandId', 'e01AsOf', 'e01LateAt', 'e03ExitId', 'e03CommandId', 'e03AsOf', 'e03LateAt', 'saleAt', 'e02BaselineAt', 'e02SaleAt', 'e02CountAt', 'e04ReceiptAt', 'e04RegistrationAt', 'retrySaleAt', 'fiscalExitAt', 'nowUtc', 'evaluationAsOf'];",
           "isolatedKeys.forEach(key => { const value = pm.collectionVariables.get(key); if (value !== undefined && value !== '') pm.variables.set(key, value); });"
         ]
       }
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "runId", "value": "" },
-    { "key": "scenarioTimesReady", "value": "" },
-    { "key": "productId", "value": "" },
-    { "key": "productVersion", "value": "" },
-    { "key": "saleEventId", "value": "" },
-    { "key": "inventoryCommandId", "value": "" },
-    { "key": "countEventId", "value": "" },
-    { "key": "e02ExceptionId", "value": "" },
-    { "key": "retrySaleId", "value": "" },
-    { "key": "retryCommandId", "value": "" },
-    { "key": "retryAsOf", "value": "" },
-    { "key": "exitEventId", "value": "" },
-    { "key": "fiscalCommandId", "value": "" },
-    { "key": "e01SaleId", "value": "" },
-    { "key": "e01CommandId", "value": "" },
-    { "key": "e01AsOf", "value": "" },
-    { "key": "e01LateAt", "value": "" },
-    { "key": "e03ExitId", "value": "" },
-    { "key": "e03CommandId", "value": "" },
-    { "key": "e03AsOf", "value": "" },
-    { "key": "e03LateAt", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "scenarioTimesReady",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "productVersion",
+      "value": ""
+    },
+    {
+      "key": "saleEventId",
+      "value": ""
+    },
+    {
+      "key": "inventoryCommandId",
+      "value": ""
+    },
+    {
+      "key": "countEventId",
+      "value": ""
+    },
+    {
+      "key": "e02ExceptionId",
+      "value": ""
+    },
+    {
+      "key": "retrySaleId",
+      "value": ""
+    },
+    {
+      "key": "retryCommandId",
+      "value": ""
+    },
+    {
+      "key": "retryAsOf",
+      "value": ""
+    },
+    {
+      "key": "exitEventId",
+      "value": ""
+    },
+    {
+      "key": "fiscalCommandId",
+      "value": ""
+    },
+    {
+      "key": "e01SaleId",
+      "value": ""
+    },
+    {
+      "key": "e01CommandId",
+      "value": ""
+    },
+    {
+      "key": "e01AsOf",
+      "value": ""
+    },
+    {
+      "key": "e01LateAt",
+      "value": ""
+    },
+    {
+      "key": "e03ExitId",
+      "value": ""
+    },
+    {
+      "key": "e03CommandId",
+      "value": ""
+    },
+    {
+      "key": "e03AsOf",
+      "value": ""
+    },
+    {
+      "key": "e03LateAt",
+      "value": ""
+    },
+    {
+      "key": "e02ProductId",
+      "value": ""
+    },
+    {
+      "key": "e04ProductId",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -71,18 +145,48 @@
             "url": "{{baseUrl}}/actuator/health",
             "description": "Comprova que Spring Boot, PostgreSQL e Flyway estão operacionais. Esperado: 200 e status UP."
           },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 200', () => pm.response.to.have.status(200));", "pm.test('Backend UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Backend UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Reset isolado do run da demo",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"runId\": \"{{runId}}\",\n  \"confirmation\": \"RESET_DEMO\"\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"runId\": \"{{runId}}\",\n  \"confirmation\": \"RESET_DEMO\"\n}"
+            },
             "url": "{{baseUrl}}/api/v1/demo/reset",
             "description": "Disponível somente com o profile demo. Remove apenas produtos, eventos, comandos, tentativas e exceções pertencentes ao runId DEMO-*/QA-* informado. Repetir o reset é seguro."
           },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reset executado', () => pm.response.to.have.status(200));", "pm.test('Run correto', () => pm.expect(pm.response.json().runId).to.eql(pm.collectionVariables.get('runId')));"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Reset executado', () => pm.response.to.have.status(200));",
+                  "pm.test('Run correto', () => pm.expect(pm.response.json().runId).to.eql(pm.collectionVariables.get('runId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -93,34 +197,154 @@
           "name": "Criação do produto canônico no PEEK",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"CAM-{{runId}}\",\n  \"name\": \"Câmera de demonstração\",\n  \"description\": \"Produto fictício para QA manual\",\n  \"price\": 120.00,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"CAM-{{runId}}\",\n  \"name\": \"Câmera de demonstração\",\n  \"description\": \"Produto fictício para QA manual\",\n  \"price\": 120.00,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}"
+            },
             "url": "{{baseUrl}}/api/v1/products",
             "description": "Comprova a persistência da identidade canônica mínima. Na primeira execução, esperado: 201 Created."
           },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Produto criado ou replay idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));", "const body = pm.response.json();", "pm.collectionVariables.set('productId', body.id);", "pm.collectionVariables.set('productVersion', String(body.version));", "pm.test('Produto ativo e identificado', () => { pm.expect(body.sku).to.eql('CAM-' + pm.collectionVariables.get('runId')); pm.expect(body.active).to.eql(true); });"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Produto criado ou replay idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('productId', body.id);",
+                  "pm.collectionVariables.set('productVersion', String(body.version));",
+                  "pm.test('Produto ativo e identificado', () => { pm.expect(body.sku).to.eql('CAM-' + pm.collectionVariables.get('runId')); pm.expect(body.active).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Reenvio idempotente não duplica produto",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"CAM-{{runId}}\",\n  \"name\": \"Câmera de demonstração\",\n  \"description\": \"Produto fictício para QA manual\",\n  \"price\": 120.00,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"CAM-{{runId}}\",\n  \"name\": \"Câmera de demonstração\",\n  \"description\": \"Produto fictício para QA manual\",\n  \"price\": 120.00,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}"
+            },
             "url": "{{baseUrl}}/api/v1/products",
             "description": "O mesmo SKU e representação retornam o recurso existente sem duplicá-lo. Esperado: 200 OK."
           },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Replay retorna 200', () => pm.response.to.have.status(200));", "pm.test('Mesmo produto', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('productId')));"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Replay retorna 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mesmo produto', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('productId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Proteção contra representação conflitante do SKU",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"CAM-{{runId}}\",\n  \"name\": \"Produto diferente\",\n  \"description\": null,\n  \"price\": 200.00,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"CAM-{{runId}}\",\n  \"name\": \"Produto diferente\",\n  \"description\": null,\n  \"price\": 200.00,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}"
+            },
             "url": "{{baseUrl}}/api/v1/products",
             "description": "Comprova que um SKU existente não pode receber uma representação divergente. Esperado: 409 CONFLICT."
           },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Conflito 409', () => pm.response.to.have.status(409));", "pm.test('Código CONFLICT', () => pm.expect(pm.response.json().code).to.eql('CONFLICT'));"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Conflito 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Código CONFLICT', () => pm.expect(pm.response.json().code).to.eql('CONFLICT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "E02 - Criar produto canônico da fixture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Mantém o cenário vinculado ao Product Master e ao reset de sua execução.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"SKU-E02-{{runId}}\",\n  \"name\": \"Produto fictício E02\",\n  \"description\": \"Fixture isolada\",\n  \"price\": null,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Produto criado', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('e02ProductId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "E04 - Criar produto canônico da fixture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Mantém o cenário vinculado ao Product Master e ao reset de sua execução.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"SKU-E04-{{runId}}\",\n  \"name\": \"Produto fictício E04\",\n  \"description\": \"Fixture isolada\",\n  \"price\": null,\n  \"gtin\": null,\n  \"category\": \"Demo\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Produto criado', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('e04ProductId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -129,23 +353,198 @@
       "item": [
         {
           "name": "Mapeamento ativo do canal de vendas",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"channel\": \"qa-sales\",\n  \"externalId\": \"SALE-CAM-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}" }, "url": "{{baseUrl}}/api/v1/products/{{productId}}/mappings", "description": "Associa o produto canônico à identidade no sistema de vendas." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Mapping criado ou idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"qa-sales\",\n  \"externalId\": \"SALE-CAM-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/products/{{productId}}/mappings",
+            "description": "Associa o produto canônico à identidade no sistema de vendas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapping criado ou idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Mapeamento ativo do canal de estoque",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"channel\": \"qa-inventory\",\n  \"externalId\": \"INV-CAM-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}" }, "url": "{{baseUrl}}/api/v1/products/{{productId}}/mappings", "description": "Associa o produto canônico à identidade no sistema de estoque." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Mapping criado ou idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"qa-inventory\",\n  \"externalId\": \"INV-CAM-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/products/{{productId}}/mappings",
+            "description": "Associa o produto canônico à identidade no sistema de estoque."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapping criado ou idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Mapeamento ativo do canal fiscal",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"channel\": \"qa-fiscal\",\n  \"externalId\": \"FISC-CAM-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}" }, "url": "{{baseUrl}}/api/v1/products/{{productId}}/mappings", "description": "Associa o produto canônico à identidade no sistema fiscal." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Mapping criado ou idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"qa-fiscal\",\n  \"externalId\": \"FISC-CAM-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/products/{{productId}}/mappings",
+            "description": "Associa o produto canônico à identidade no sistema fiscal."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapping criado ou idempotente', () => pm.expect([200, 201]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Resolução da identidade externa para o produto canônico",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/product-mappings/resolve?channel=qa-inventory&externalId=INV-CAM-{{runId}}", "description": "Comprova que uma identidade externa ativa é resolvida para o produto canônico correto." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Resolução 200', () => pm.response.to.have.status(200));", "pm.test('Produto correto', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('productId')));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/product-mappings/resolve?channel=qa-inventory&externalId=INV-CAM-{{runId}}",
+            "description": "Comprova que uma identidade externa ativa é resolvida para o produto canônico correto."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Resolução 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Produto correto', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('productId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "E02 - Mapping qa-inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products/{{e02ProductId}}/mappings",
+            "description": "Permite que o adapter resolva o identificador externo para o produto canônico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"qa-inventory\",\n  \"externalId\": \"INV-E02-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapping criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "E02 - Mapping qa-sales",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products/{{e02ProductId}}/mappings",
+            "description": "Permite que o adapter resolva o identificador externo para o produto canônico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"qa-sales\",\n  \"externalId\": \"SALE-E02-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapping criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "E04 - Mapping qa-inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products/{{e04ProductId}}/mappings",
+            "description": "Permite que o adapter resolva o identificador externo para o produto canônico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"qa-inventory\",\n  \"externalId\": \"INV-E04-{{runId}}\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mapping criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -154,38 +553,244 @@
       "item": [
         {
           "name": "Adapter converte venda externa em evento canônico",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"messageId\": \"sale-message-{{runId}}-1\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-{{runId}}-1\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 2,\n  \"happenedAt\": \"{{saleAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/sales", "description": "Traduz um payload fictício de vendas para SALE_CONFIRMED e resolve o produto pelo mapping." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Evento criado', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.collectionVariables.set('saleEventId', body.id);", "pm.test('Evento normalizado', () => { pm.expect(body.type).to.eql('SALE_CONFIRMED'); pm.expect(body.productId).to.eql(pm.collectionVariables.get('productId')); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"sale-message-{{runId}}-1\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-{{runId}}-1\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 2,\n  \"happenedAt\": \"{{saleAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/sales",
+            "description": "Traduz um payload fictício de vendas para SALE_CONFIRMED e resolve o produto pelo mapping."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Evento criado', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('saleEventId', body.id);",
+                  "pm.test('Evento normalizado', () => { pm.expect(body.type).to.eql('SALE_CONFIRMED'); pm.expect(body.productId).to.eql(pm.collectionVariables.get('productId')); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Replay de evento não gera duplicidade",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"messageId\": \"sale-message-{{runId}}-1\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-{{runId}}-1\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 2,\n  \"happenedAt\": \"{{saleAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/sales", "description": "Comprova idempotência da identidade externa do evento." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Replay retorna 200', () => pm.response.to.have.status(200));", "pm.test('Mesmo evento', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('saleEventId')));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"sale-message-{{runId}}-1\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-{{runId}}-1\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 2,\n  \"happenedAt\": \"{{saleAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/sales",
+            "description": "Comprova idempotência da identidade externa do evento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Replay retorna 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mesmo evento', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('saleEventId')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Venda inicia sincronização simulada de estoque",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{saleEventId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-{{runId}}-1\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/inventory-sync", "description": "Cria um comando outbound auditável, aceito pelo adapter simulado e pendente de confirmação." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando criado', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.collectionVariables.set('inventoryCommandId', body.id);", "pm.test('Pendente com tentativa aceita', () => { pm.expect(body.status).to.eql('PENDING_CONFIRMATION'); pm.expect(body.attempts[0].result).to.eql('ACCEPTED'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerEventId\": \"{{saleEventId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-{{runId}}-1\",\n  \"simulateFailure\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/commands/inventory-sync",
+            "description": "Cria um comando outbound auditável, aceito pelo adapter simulado e pendente de confirmação."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando criado', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('inventoryCommandId', body.id);",
+                  "pm.test('Pendente com tentativa aceita', () => { pm.expect(body.status).to.eql('PENDING_CONFIRMATION'); pm.expect(body.attempts[0].result).to.eql('ACCEPTED'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Evento com pedido incorreto não confirma comando",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"changeId\": \"stock-wrong-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-ERRADO-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 2,\n  \"onHand\": 98,\n  \"occurredUtc\": \"{{nowUtc}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/inventory", "description": "Produz um STOCK_UPDATED válido, mas com chave de correlação diferente." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Evento aceito', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changeId\": \"stock-wrong-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-ERRADO-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 2,\n  \"onHand\": 98,\n  \"occurredUtc\": \"{{nowUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/inventory",
+            "description": "Produz um STOCK_UPDATED válido, mas com chave de correlação diferente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Evento aceito', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Comando permanece pendente após correlação incorreta",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{inventoryCommandId}}", "description": "Comprova que um pedido incorreto não confirma o comando." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Ainda pendente', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('PENDING_CONFIRMATION'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/commands/{{inventoryCommandId}}",
+            "description": "Comprova que um pedido incorreto não confirma o comando."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Ainda pendente', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('PENDING_CONFIRMATION'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Evento correto confirma sincronização de estoque",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"changeId\": \"stock-right-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-{{runId}}-1\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 2,\n  \"onHand\": 98,\n  \"occurredUtc\": \"{{nowUtc}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/inventory", "description": "Canal, produto, identificador externo e pedido corretos confirmam a operação." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Confirmação criada', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changeId\": \"stock-right-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-{{runId}}-1\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 2,\n  \"onHand\": 98,\n  \"occurredUtc\": \"{{nowUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/inventory",
+            "description": "Canal, produto, identificador externo e pedido corretos confirmam a operação."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Confirmação criada', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Sincronização de estoque confirmada por correlação exata",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{inventoryCommandId}}", "description": "Comprova a confirmação final e sua evidência de evento." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando confirmado', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationEventId).to.be.a('string'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/commands/{{inventoryCommandId}}",
+            "description": "Comprova a confirmação final e sua evidência de evento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando confirmado', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationEventId).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Avaliar fluxo normal de estoque após o prazo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{evaluationAsOf}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmação de estoque não produz E01",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/exceptions?code=E01",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Fluxo normal sem E01', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().some(x => x.triggerEventId === pm.collectionVariables.get('saleEventId'))).to.eql(false); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -194,28 +799,145 @@
       "item": [
         {
           "name": "E02 - Registrar baseline sistêmico 100",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-inventory\",\n  \"externalEventId\": \"baseline-e02-{{runId}}\",\n  \"type\": \"STOCK_UPDATED\",\n  \"occurredAt\": \"{{e02BaselineAt}}\",\n  \"sku\": \"SKU-E02-{{runId}}\",\n  \"stockAfter\": 100,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Estabelece o baseline necessário ao cálculo determinístico." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Baseline criado', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changeId\": \"baseline-e02-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-E02-{{runId}}\",\n  \"orderRef\": null,\n  \"receiptRef\": null,\n  \"registeredUnits\": null,\n  \"onHand\": 100,\n  \"occurredUtc\": \"{{e02BaselineAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/inventory",
+            "description": "Estabelece o baseline necessário ao cálculo determinístico."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Baseline criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E02 - Registrar venda de 5 unidades",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-sales\",\n  \"externalEventId\": \"sale-e02-{{runId}}\",\n  \"type\": \"SALE_CONFIRMED\",\n  \"occurredAt\": \"{{e02SaleAt}}\",\n  \"sku\": \"SKU-E02-{{runId}}\",\n  \"orderId\": \"ORDER-E02-{{runId}}\",\n  \"quantity\": 5,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Reduz o estoque esperado de 100 para 95." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Venda criada', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"sale-e02-{{runId}}\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-E02-{{runId}}\",\n  \"itemId\": \"SALE-E02-{{runId}}\",\n  \"units\": 5,\n  \"happenedAt\": \"{{e02SaleAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/sales",
+            "description": "Reduz o estoque esperado de 100 para 95."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Venda criada', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E02 - Registrar contagem física confirmada 90",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-physical\",\n  \"externalEventId\": \"count-e02-{{runId}}\",\n  \"type\": \"PHYSICAL_COUNT\",\n  \"occurredAt\": \"{{e02CountAt}}\",\n  \"sku\": \"SKU-E02-{{runId}}\",\n  \"quantity\": 90,\n  \"confirmed\": true,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Registra evidência física confirmada divergente do esperado 95." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Contagem criada', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('countEventId', pm.response.json().id);"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"count-e02-{{runId}}\",\n  \"source\": \"qa-physical\",\n  \"kind\": \"COUNT\",\n  \"sku\": \"SKU-E02-{{runId}}\",\n  \"order\": null,\n  \"receipt\": null,\n  \"movement\": null,\n  \"units\": 90,\n  \"countConfirmed\": true,\n  \"registeredAt\": \"{{e02CountAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/physical",
+            "description": "Registra evidência física confirmada divergente do esperado 95."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Contagem criada', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('countEventId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E02 - Executar avaliação determinística",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"asOf\": \"{{evaluationAsOf}}\"\n}" }, "url": "{{baseUrl}}/api/v1/evaluations", "description": "Executa o reconciliador em um instante explícito." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Avaliação executada', () => pm.response.to.have.status(200));", "pm.test('Exceção criada ou já presente', () => { const body = pm.response.json(); pm.expect(body.created + body.alreadyPresent).to.be.above(0); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{evaluationAsOf}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "Executa o reconciliador em um instante explícito."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação executada', () => pm.response.to.have.status(200));",
+                  "pm.test('Exceção criada ou já presente', () => { const body = pm.response.json(); pm.expect(body.created + body.alreadyPresent).to.be.above(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E02 detecta divergência do estoque físico",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E02", "description": "Comprova expected 95 versus observed 90, com tolerância 1 e evidências." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Lista E02 aberta', () => pm.response.to.have.status(200));", "const rows = pm.response.json();", "const found = rows.find(row => row.triggerEventId === pm.collectionVariables.get('countEventId'));", "pm.test('E02 da contagem encontrada', () => { pm.expect(found).to.exist; pm.expect(found.expectedState).to.eql('95'); pm.expect(found.observedState).to.eql('90'); });", "if (found) pm.collectionVariables.set('e02ExceptionId', found.id);"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E02",
+            "description": "Comprova expected 95 versus observed 90, com tolerância 1 e evidências."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lista E02 aberta', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "const found = rows.find(row => row.triggerEventId === pm.collectionVariables.get('countEventId'));",
+                  "pm.test('E02 da contagem encontrada', () => { pm.expect(found).to.exist; pm.expect(found.expectedState).to.eql('95'); pm.expect(found.observedState).to.eql('90'); });",
+                  "if (found) pm.collectionVariables.set('e02ExceptionId', found.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -224,23 +946,111 @@
       "item": [
         {
           "name": "E04 - Registrar recebimento físico 10",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-physical\",\n  \"externalEventId\": \"receipt-e04-{{runId}}\",\n  \"type\": \"GOODS_RECEIVED\",\n  \"occurredAt\": \"{{e04ReceiptAt}}\",\n  \"sku\": \"SKU-E04-{{runId}}\",\n  \"receiptId\": \"RECEIPT-{{runId}}\",\n  \"quantity\": 10,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Registra dez unidades fisicamente recebidas." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Recebimento criado', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"receipt-e04-{{runId}}\",\n  \"source\": \"qa-physical\",\n  \"kind\": \"RECEIPT\",\n  \"sku\": \"SKU-E04-{{runId}}\",\n  \"order\": null,\n  \"receipt\": \"RECEIPT-{{runId}}\",\n  \"movement\": null,\n  \"units\": 10,\n  \"countConfirmed\": null,\n  \"registeredAt\": \"{{e04ReceiptAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/physical",
+            "description": "Registra dez unidades fisicamente recebidas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Recebimento criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E04 - Registrar somente 8 no estoque",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-inventory\",\n  \"externalEventId\": \"registration-e04-{{runId}}\",\n  \"type\": \"STOCK_UPDATED\",\n  \"occurredAt\": \"{{e04RegistrationAt}}\",\n  \"sku\": \"SKU-E04-{{runId}}\",\n  \"receiptId\": \"RECEIPT-{{runId}}\",\n  \"quantity\": 8,\n  \"stockAfter\": 108,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Registra quantidade sistêmica divergente para o mesmo recebimento e SKU." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Registro criado', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changeId\": \"registration-e04-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-E04-{{runId}}\",\n  \"orderRef\": null,\n  \"receiptRef\": \"RECEIPT-{{runId}}\",\n  \"registeredUnits\": 8,\n  \"onHand\": 108,\n  \"occurredUtc\": \"{{e04RegistrationAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/inventory",
+            "description": "Registra quantidade sistêmica divergente para o mesmo recebimento e SKU."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Registro criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E04 - Executar avaliação determinística",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"asOf\": \"{{evaluationAsOf}}\"\n}" }, "url": "{{baseUrl}}/api/v1/evaluations", "description": "Reavalia eventos e cria E04 sem duplicar exceções anteriores." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Avaliação 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{evaluationAsOf}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "Reavalia eventos e cria E04 sem duplicar exceções anteriores."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E04 detecta recebimento divergente",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E04", "description": "Comprova a divergência entre recebimento físico 10 e registro sistêmico 8." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Lista E04 200', () => pm.response.to.have.status(200));", "pm.test('E04 esperado', () => { const row = pm.response.json().find(x => x.sku === 'SKU-E04-' + pm.collectionVariables.get('runId')); pm.expect(row).to.exist; pm.expect(row.expectedState).to.eql('10'); pm.expect(row.observedState).to.eql('8'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E04",
+            "description": "Comprova a divergência entre recebimento físico 10 e registro sistêmico 8."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Lista E04 200', () => pm.response.to.have.status(200));",
+                  "pm.test('E04 esperado', () => { const row = pm.response.json().find(x => x.sku === 'SKU-E04-' + pm.collectionVariables.get('runId')); pm.expect(row).to.exist; pm.expect(row.expectedState).to.eql('10'); pm.expect(row.observedState).to.eql('8'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -249,28 +1059,153 @@
       "item": [
         {
           "name": "Retry - Registrar nova venda",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"messageId\": \"sale-retry-{{runId}}\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-RETRY-{{runId}}\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 1,\n  \"happenedAt\": \"{{retrySaleAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/sales", "description": "Cria o trigger para o cenário de falha e retry." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Venda criada', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('retrySaleId', pm.response.json().id);"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"sale-retry-{{runId}}\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-RETRY-{{runId}}\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 1,\n  \"happenedAt\": \"{{retrySaleAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/sales",
+            "description": "Cria o trigger para o cenário de falha e retry."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Venda criada', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('retrySaleId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Dispatch simulado falha com evidência",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{retrySaleId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-retry-{{runId}}\",\n  \"simulateFailure\": true\n}" }, "url": "{{baseUrl}}/api/v1/commands/inventory-sync", "description": "O switch de teste simula falha do adapter outbound e grava a tentativa imutável." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('retryCommandId', body.id); pm.collectionVariables.set('retryAsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString());", "pm.test('Falha auditável', () => { pm.expect(body.status).to.eql('FAILED'); pm.expect(body.attempts[0].errorCode).to.eql('MOCK_INVENTORY_DISPATCH_FAILURE'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerEventId\": \"{{retrySaleId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-retry-{{runId}}\",\n  \"simulateFailure\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/commands/inventory-sync",
+            "description": "O switch de teste simula falha do adapter outbound e grava a tentativa imutável."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando criado', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json(); pm.collectionVariables.set('retryCommandId', body.id); pm.collectionVariables.set('retryAsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString());",
+                  "pm.test('Falha auditável', () => { pm.expect(body.status).to.eql('FAILED'); pm.expect(body.attempts[0].errorCode).to.eql('MOCK_INVENTORY_DISPATCH_FAILURE'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Falha sem confirmação gera E01 sem espera real",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"asOf\": \"{{retryAsOf}}\"\n}" }, "url": "{{baseUrl}}/api/v1/evaluations", "description": "Avança a avaliação para depois do deadline do comando com falha antes de executar o retry." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Avaliação 200', () => pm.response.to.have.status(200));", "pm.test('Exceção de falha criada', () => { const body = pm.response.json(); pm.expect(body.created + body.alreadyPresent).to.be.above(0); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{retryAsOf}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "Avança a avaliação para depois do deadline do comando com falha antes de executar o retry."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Exceção de falha criada', () => { const body = pm.response.json(); pm.expect(body.created + body.alreadyPresent).to.be.above(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Retry preserva histórico de tentativas",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idempotencyKey\": \"retry-{{runId}}-1\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/{{retryCommandId}}/retry", "description": "Adiciona uma segunda tentativa aceita sem apagar a falha anterior; repetir a mesma chave não cria outra tentativa." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Retry 200', () => pm.response.to.have.status(200));", "pm.test('Histórico preservado', () => { const body = pm.response.json(); pm.expect(body.status).to.eql('PENDING_CONFIRMATION'); pm.expect(body.attempts).to.have.length(2); pm.expect(body.attempts[0].result).to.eql('FAILED'); pm.expect(body.attempts[1].result).to.eql('ACCEPTED'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"retry-{{runId}}-1\",\n  \"simulateFailure\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/commands/{{retryCommandId}}/retry",
+            "description": "Adiciona uma segunda tentativa aceita sem apagar a falha anterior; repetir a mesma chave não cria outra tentativa."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Retry 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Histórico preservado', () => { const body = pm.response.json(); pm.expect(body.status).to.eql('PENDING_CONFIRMATION'); pm.expect(body.attempts).to.have.length(2); pm.expect(body.attempts[0].result).to.eql('FAILED'); pm.expect(body.attempts[1].result).to.eql('ACCEPTED'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Retry confirmado por evento de estoque",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"changeId\": \"stock-retry-right-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-RETRY-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 1,\n  \"onHand\": 97,\n  \"occurredUtc\": \"{{nowUtc}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/inventory", "description": "Confirma a tentativa aceita e evita que o cenário de retry permaneça pendente." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Confirmação criada', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changeId\": \"stock-retry-right-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-RETRY-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 1,\n  \"onHand\": 97,\n  \"occurredUtc\": \"{{nowUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/inventory",
+            "description": "Confirma a tentativa aceita e evita que o cenário de retry permaneça pendente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Confirmação criada', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -279,23 +1214,162 @@
       "item": [
         {
           "name": "Registrar saída física",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"ticketId\": \"exit-{{runId}}-1\",\n  \"source\": \"qa-physical\",\n  \"kind\": \"EXIT\",\n  \"sku\": \"CAM-{{runId}}\",\n  \"order\": \"ORDER-FISCAL-{{runId}}\",\n  \"receipt\": null,\n  \"movement\": \"MOVE-{{runId}}\",\n  \"units\": 2,\n  \"countConfirmed\": null,\n  \"registeredAt\": \"{{fiscalExitAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/physical", "description": "Traduz a evidência física de saída para PHYSICAL_EXIT." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Saída criada', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('exitEventId', pm.response.json().id);"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"exit-{{runId}}-1\",\n  \"source\": \"qa-physical\",\n  \"kind\": \"EXIT\",\n  \"sku\": \"CAM-{{runId}}\",\n  \"order\": \"ORDER-FISCAL-{{runId}}\",\n  \"receipt\": null,\n  \"movement\": \"MOVE-{{runId}}\",\n  \"units\": 2,\n  \"countConfirmed\": null,\n  \"registeredAt\": \"{{fiscalExitAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/physical",
+            "description": "Traduz a evidência física de saída para PHYSICAL_EXIT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saída criada', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('exitEventId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Saída física inicia comando fiscal",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{exitEventId}}\",\n  \"channel\": \"qa-fiscal\",\n  \"idempotencyKey\": \"fiscal-{{runId}}-1\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/fiscal", "description": "Cria comando fiscal simulado e aguarda confirmação por evento externo." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando fiscal criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('fiscalCommandId', body.id);", "pm.test('Pendente', () => pm.expect(body.status).to.eql('PENDING_CONFIRMATION'));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerEventId\": \"{{exitEventId}}\",\n  \"channel\": \"qa-fiscal\",\n  \"idempotencyKey\": \"fiscal-{{runId}}-1\",\n  \"simulateFailure\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/commands/fiscal",
+            "description": "Cria comando fiscal simulado e aguarda confirmação por evento externo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando fiscal criado', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json(); pm.collectionVariables.set('fiscalCommandId', body.id);",
+                  "pm.test('Pendente', () => pm.expect(body.status).to.eql('PENDING_CONFIRMATION'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Documento fiscal externo confirma saída física",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"notificationId\": \"invoice-notice-{{runId}}\",\n  \"system\": \"qa-fiscal\",\n  \"documentNumber\": \"INV-{{runId}}\",\n  \"orderReference\": \"ORDER-FISCAL-{{runId}}\",\n  \"movementReference\": \"MOVE-{{runId}}\",\n  \"itemCode\": \"FISC-CAM-{{runId}}\",\n  \"pieces\": 2,\n  \"issuedAt\": \"{{nowUtc}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/fiscal", "description": "Traduz INVOICE_ISSUED e confirma por pedido e SKU conforme a configuração padrão." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Documento criado', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationId\": \"invoice-notice-{{runId}}\",\n  \"system\": \"qa-fiscal\",\n  \"documentNumber\": \"INV-{{runId}}\",\n  \"orderReference\": \"ORDER-FISCAL-{{runId}}\",\n  \"movementReference\": \"MOVE-{{runId}}\",\n  \"itemCode\": \"FISC-CAM-{{runId}}\",\n  \"pieces\": 2,\n  \"issuedAt\": \"{{nowUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/fiscal",
+            "description": "Traduz INVOICE_ISSUED e confirma por pedido e SKU conforme a configuração padrão."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Documento criado', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Saída física confirmada por documento fiscal",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{fiscalCommandId}}", "description": "Comprova confirmação e retenção do identificador fiscal externo." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Fiscal confirmado', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.externalDocumentId).to.eql('INV-' + pm.collectionVariables.get('runId')); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/commands/{{fiscalCommandId}}",
+            "description": "Comprova confirmação e retenção do identificador fiscal externo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Fiscal confirmado', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.externalDocumentId).to.eql('INV-' + pm.collectionVariables.get('runId')); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Avaliar fluxo fiscal normal após o prazo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{evaluationAsOf}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Documento confirmado não produz E03",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/exceptions?code=E03",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Fluxo normal sem E03', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().some(x => x.triggerEventId === pm.collectionVariables.get('exitEventId'))).to.eql(false); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -304,13 +1378,53 @@
       "item": [
         {
           "name": "Contexto operacional reúne produto estoque e fiscal",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/products/{{productId}}/context", "description": "Apresenta produto, mappings, estado de estoque, comandos e evidência fiscal em uma visão consolidada." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Contexto 200', () => pm.response.to.have.status(200));", "pm.test('Fiscal confirmado', () => pm.expect(pm.response.json().fiscal.status).to.eql('CONFIRMED'));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products/{{productId}}/context",
+            "description": "Apresenta produto, mappings, estado de estoque, comandos e evidência fiscal em uma visão consolidada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Contexto 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Fiscal confirmado', () => pm.expect(pm.response.json().fiscal.status).to.eql('CONFIRMED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Exceção resolvida com registro auditável",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"note\": \"Contagem física verificada durante QA manual\"\n}" }, "url": "{{baseUrl}}/api/v1/exceptions/{{e02ExceptionId}}/resolve", "description": "Comprova o ciclo de vida da exceção e preserva justificativa e horário de resolução." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Exceção resolvida', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('RESOLVED'); pm.expect(body.resolvedAt).to.be.a('string'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Contagem física verificada durante QA manual\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/exceptions/{{e02ExceptionId}}/resolve",
+            "description": "Comprova o ciclo de vida da exceção e preserva justificativa e horário de resolução."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Exceção resolvida', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('RESOLVED'); pm.expect(body.resolvedAt).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -319,33 +1433,161 @@
       "item": [
         {
           "name": "E01 - Registrar venda sem futura confirmação",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"messageId\": \"sale-timeout-{{runId}}\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-TIMEOUT-{{runId}}\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 1,\n  \"happenedAt\": \"{{nowUtc}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/sales", "description": "Cria venda destinada ao cenário de timeout E01." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Venda criada', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('e01SaleId', pm.response.json().id);"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"sale-timeout-{{runId}}\",\n  \"channel\": \"qa-sales\",\n  \"saleNumber\": \"ORDER-TIMEOUT-{{runId}}\",\n  \"itemId\": \"SALE-CAM-{{runId}}\",\n  \"units\": 1,\n  \"happenedAt\": \"{{nowUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/sales",
+            "description": "Cria venda destinada ao cenário de timeout E01."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Venda criada', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('e01SaleId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E01 - Criar comando pendente",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{e01SaleId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-timeout-{{runId}}\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/inventory-sync", "description": "Cria comando aceito que ficará sem STOCK_UPDATED correlacionado." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando pendente criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('e01CommandId', body.id); pm.collectionVariables.set('e01AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString()); pm.collectionVariables.set('e01LateAt', new Date(Date.parse(body.deadlineAt) + 2000).toISOString());"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerEventId\": \"{{e01SaleId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-timeout-{{runId}}\",\n  \"simulateFailure\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/commands/inventory-sync",
+            "description": "Cria comando aceito que ficará sem STOCK_UPDATED correlacionado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando pendente criado', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json(); pm.collectionVariables.set('e01CommandId', body.id); pm.collectionVariables.set('e01AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString()); pm.collectionVariables.set('e01LateAt', new Date(Date.parse(body.deadlineAt) + 2000).toISOString());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E01 - Avaliar após deadline",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"asOf\": \"{{e01AsOf}}\"\n}" }, "url": "{{baseUrl}}/api/v1/evaluations", "description": "Avalia exatamente após o deadline retornado, sem esperar cinco minutos reais." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Avaliação 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{e01AsOf}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "Avalia exatamente após o deadline retornado, sem esperar cinco minutos reais."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E01 detecta sincronização de estoque não confirmada",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E01", "description": "Comprova que um comando real e vencido sem confirmação gera E01 com evidências." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('E01 encontrada', () => { pm.response.to.have.status(200); const row = pm.response.json().find(x => x.triggerEventId === pm.collectionVariables.get('e01SaleId')); pm.expect(row).to.exist; pm.expect(row.code).to.eql('E01'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E01",
+            "description": "Comprova que um comando real e vencido sem confirmação gera E01 com evidências."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('E01 encontrada', () => { pm.response.to.have.status(200); const row = pm.response.json().find(x => x.triggerEventId === pm.collectionVariables.get('e01SaleId')); pm.expect(row).to.exist; pm.expect(row.code).to.eql('E01'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E01 - Confirmação tardia permanece auditável",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"changeId\": \"stock-timeout-late-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-TIMEOUT-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 1,\n  \"onHand\": 96,\n  \"occurredUtc\": \"{{e01LateAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/inventory", "description": "A confirmação chega depois da janela, confirma o comando para o estado atual e não apaga a E01 já registrada." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Confirmação tardia aceita', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changeId\": \"stock-timeout-late-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-TIMEOUT-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 1,\n  \"onHand\": 96,\n  \"occurredUtc\": \"{{e01LateAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/inventory",
+            "description": "A confirmação chega depois da janela, confirma o comando para o estado atual e não apaga a E01 já registrada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Confirmação tardia aceita', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E01 - Comando registra confirmação tardia",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{e01CommandId}}", "description": "Comprova que o evento tardio permanece associado ao comando sem remover a exceção histórica." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando confirmado tardiamente', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationOccurredAt).to.eql(pm.collectionVariables.get('e01LateAt')); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/commands/{{e01CommandId}}",
+            "description": "Comprova que o evento tardio permanece associado ao comando sem remover a exceção histórica."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando confirmado tardiamente', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationOccurredAt).to.eql(pm.collectionVariables.get('e01LateAt')); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -354,33 +1596,161 @@
       "item": [
         {
           "name": "E03 - Registrar saída sem documento futuro",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"ticketId\": \"exit-timeout-{{runId}}\",\n  \"source\": \"qa-physical\",\n  \"kind\": \"EXIT\",\n  \"sku\": \"CAM-{{runId}}\",\n  \"order\": \"ORDER-FISCAL-TIMEOUT-{{runId}}\",\n  \"receipt\": null,\n  \"movement\": \"MOVE-TIMEOUT-{{runId}}\",\n  \"units\": 1,\n  \"countConfirmed\": null,\n  \"registeredAt\": \"{{nowUtc}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/physical", "description": "Cria PHYSICAL_EXIT destinado ao cenário de timeout E03." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Saída criada', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('e03ExitId', pm.response.json().id);"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"exit-timeout-{{runId}}\",\n  \"source\": \"qa-physical\",\n  \"kind\": \"EXIT\",\n  \"sku\": \"CAM-{{runId}}\",\n  \"order\": \"ORDER-FISCAL-TIMEOUT-{{runId}}\",\n  \"receipt\": null,\n  \"movement\": \"MOVE-TIMEOUT-{{runId}}\",\n  \"units\": 1,\n  \"countConfirmed\": null,\n  \"registeredAt\": \"{{nowUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/physical",
+            "description": "Cria PHYSICAL_EXIT destinado ao cenário de timeout E03."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saída criada', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('e03ExitId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E03 - Criar comando fiscal pendente",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{e03ExitId}}\",\n  \"channel\": \"qa-fiscal\",\n  \"idempotencyKey\": \"fiscal-timeout-{{runId}}\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/fiscal", "description": "Cria comando fiscal aceito sem posterior INVOICE_ISSUED." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando fiscal pendente', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('e03CommandId', body.id); pm.collectionVariables.set('e03AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString()); pm.collectionVariables.set('e03LateAt', new Date(Date.parse(body.deadlineAt) + 2000).toISOString());"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"triggerEventId\": \"{{e03ExitId}}\",\n  \"channel\": \"qa-fiscal\",\n  \"idempotencyKey\": \"fiscal-timeout-{{runId}}\",\n  \"simulateFailure\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/commands/fiscal",
+            "description": "Cria comando fiscal aceito sem posterior INVOICE_ISSUED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comando fiscal pendente', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json(); pm.collectionVariables.set('e03CommandId', body.id); pm.collectionVariables.set('e03AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString()); pm.collectionVariables.set('e03LateAt', new Date(Date.parse(body.deadlineAt) + 2000).toISOString());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E03 - Avaliar após deadline",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"asOf\": \"{{e03AsOf}}\"\n}" }, "url": "{{baseUrl}}/api/v1/evaluations", "description": "Avalia após o deadline fiscal retornado, sem aguardar dez minutos reais." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Avaliação 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"{{e03AsOf}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/evaluations",
+            "description": "Avalia após o deadline fiscal retornado, sem aguardar dez minutos reais."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Avaliação 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E03 detecta saída física sem confirmação fiscal",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E03", "description": "Comprova que uma saída com comando vencido e sem documento correlacionado gera E03." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('E03 encontrada', () => { pm.response.to.have.status(200); const row = pm.response.json().find(x => x.triggerEventId === pm.collectionVariables.get('e03ExitId')); pm.expect(row).to.exist; pm.expect(row.code).to.eql('E03'); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E03",
+            "description": "Comprova que uma saída com comando vencido e sem documento correlacionado gera E03."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('E03 encontrada', () => { pm.response.to.have.status(200); const row = pm.response.json().find(x => x.triggerEventId === pm.collectionVariables.get('e03ExitId')); pm.expect(row).to.exist; pm.expect(row.code).to.eql('E03'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E03 - Documento tardio permanece auditável",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"notificationId\": \"invoice-timeout-late-{{runId}}\",\n  \"system\": \"qa-fiscal\",\n  \"documentNumber\": \"INV-TIMEOUT-{{runId}}\",\n  \"orderReference\": \"ORDER-FISCAL-TIMEOUT-{{runId}}\",\n  \"movementReference\": \"MOVE-TIMEOUT-{{runId}}\",\n  \"itemCode\": \"FISC-CAM-{{runId}}\",\n  \"pieces\": 1,\n  \"issuedAt\": \"{{e03LateAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/fiscal", "description": "Registra documento correlacionado depois do deadline; a E03 histórica permanece disponível." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Documento tardio aceito', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationId\": \"invoice-timeout-late-{{runId}}\",\n  \"system\": \"qa-fiscal\",\n  \"documentNumber\": \"INV-TIMEOUT-{{runId}}\",\n  \"orderReference\": \"ORDER-FISCAL-TIMEOUT-{{runId}}\",\n  \"movementReference\": \"MOVE-TIMEOUT-{{runId}}\",\n  \"itemCode\": \"FISC-CAM-{{runId}}\",\n  \"pieces\": 1,\n  \"issuedAt\": \"{{e03LateAt}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/mock/fiscal",
+            "description": "Registra documento correlacionado depois do deadline; a E03 histórica permanece disponível."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Documento tardio aceito', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "E03 - Comando registra documento tardio",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{e03CommandId}}", "description": "Comprova confirmação posterior sem perda da evidência de timeout." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Fiscal confirmado tardiamente', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationOccurredAt).to.eql(pm.collectionVariables.get('e03LateAt')); });"], "type": "text/javascript" } }]
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/commands/{{e03CommandId}}",
+            "description": "Comprova confirmação posterior sem perda da evidência de timeout."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Fiscal confirmado tardiamente', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationOccurredAt).to.eql(pm.collectionVariables.get('e03LateAt')); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -389,13 +1759,126 @@
       "item": [
         {
           "name": "Tipo de evento desconhecido retorna 422",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-invalid\",\n  \"externalEventId\": \"unknown-{{runId}}\",\n  \"type\": \"UNKNOWN_EVENT\",\n  \"occurredAt\": \"{{nowUtc}}\",\n  \"sku\": \"INVALID-{{runId}}\",\n  \"quantity\": 1,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Diferencia tipo canônico não suportado de JSON inválido." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 422', () => pm.response.to.have.status(422));", "pm.test('Código correto', () => pm.expect(pm.response.json().code).to.eql('UNSUPPORTED_EVENT_TYPE'));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"qa-invalid\",\n  \"externalEventId\": \"unknown-{{runId}}\",\n  \"type\": \"UNKNOWN_EVENT\",\n  \"occurredAt\": \"{{nowUtc}}\",\n  \"sku\": \"INVALID-{{runId}}\",\n  \"quantity\": 1,\n  \"metadata\": {}\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/events",
+            "description": "Diferencia tipo canônico não suportado de JSON inválido."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Código correto', () => pm.expect(pm.response.json().code).to.eql('UNSUPPORTED_EVENT_TYPE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Evento inválido retorna 400",
-          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source\": \"qa-invalid\",\n  \"externalEventId\": \"invalid-sale-{{runId}}\",\n  \"type\": \"SALE_CONFIRMED\",\n  \"occurredAt\": \"{{nowUtc}}\",\n  \"sku\": \"INVALID-{{runId}}\",\n  \"orderId\": \"ORDER-INVALID-{{runId}}\",\n  \"quantity\": 0,\n  \"metadata\": {}\n}" }, "url": "{{baseUrl}}/api/v1/events", "description": "Comprova validação de quantidade positiva para venda." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 400', () => pm.response.to.have.status(400));", "pm.test('INVALID_INPUT', () => pm.expect(pm.response.json().code).to.eql('INVALID_INPUT'));"], "type": "text/javascript" } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"qa-invalid\",\n  \"externalEventId\": \"invalid-sale-{{runId}}\",\n  \"type\": \"SALE_CONFIRMED\",\n  \"occurredAt\": \"{{nowUtc}}\",\n  \"sku\": \"INVALID-{{runId}}\",\n  \"orderId\": \"ORDER-INVALID-{{runId}}\",\n  \"quantity\": 0,\n  \"metadata\": {}\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/events",
+            "description": "Comprova validação de quantidade positiva para venda."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('INVALID_INPUT', () => pm.expect(pm.response.json().code).to.eql('INVALID_INPUT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12 - Reset e repetição",
+      "item": [
+        {
+          "name": "Reset remove toda a execução",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/demo/reset",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"runId\": \"{{runId}}\",\n  \"confirmation\": \"RESET_DEMO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Reset 200 com dados removidos', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.products).to.eql(3); pm.expect(body.totalDeleted).to.be.above(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Segundo reset não encontra resíduos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/demo/reset",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"runId\": \"{{runId}}\",\n  \"confirmation\": \"RESET_DEMO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Segundo reset vazio', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().totalDeleted).to.eql(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     }

@@ -61,8 +61,16 @@ class DemoResetIT {
         String controlSku = "CONTROL-" + suffix;
         products.create(new ProductService.ProductInput(
             controlSku, "Non-demo control", null, null, null, "Operational"));
-        events.ingest(new EventInput("control-source", "control-" + suffix, "STOCK_UPDATED",
+        events.ingest(new EventInput("qa-inventory", "control-" + runId, "STOCK_UPDATED",
             now.minusSeconds(20), null, controlSku, null, null, null, null, null,
+            BigDecimal.ZERO, new BigDecimal("10"), null, Map.of()));
+
+        String otherRunId = runId + "1";
+        String otherSku = "CAM-" + otherRunId;
+        products.create(new ProductService.ProductInput(
+            otherSku, "Another demo run", null, null, null, "Demo"));
+        events.ingest(new EventInput("qa-inventory", "baseline-" + otherRunId, "STOCK_UPDATED",
+            now.minusSeconds(20), null, otherSku, null, null, null, null, null,
             BigDecimal.ZERO, new BigDecimal("10"), null, Map.of()));
 
         String demoSku = "CAM-" + runId;
@@ -75,6 +83,12 @@ class DemoResetIT {
             "qa-inventory", "INV-CAM-" + runId, MappingStatus.ACTIVE));
         products.addMapping(productId, new ProductService.MappingInput(
             "qa-fiscal", "FISC-CAM-" + runId, MappingStatus.ACTIVE));
+        for (String sku : new String[] {"SKU-E02-" + runId, "SKU-E04-" + runId}) {
+            products.create(new ProductService.ProductInput(sku, "Demo scenario", null, null, null, "Demo"));
+            events.ingest(new EventInput("qa-inventory", "baseline-" + sku, "STOCK_UPDATED",
+                now.minusSeconds(20), null, sku, null, null, null, null, null,
+                BigDecimal.ZERO, new BigDecimal("10"), null, Map.of()));
+        }
 
         var saleResponse = http.postForEntity("/api/v1/mock/sales", new MockSalesAdapter.SaleNotice(
             "sale-timeout-" + runId, "qa-sales", "ORDER-" + runId, "SALE-CAM-" + runId,
@@ -96,16 +110,20 @@ class DemoResetIT {
         DemoResetService.ResetResult result = resetResponse.getBody();
         assertNotNull(result);
         assertTrue(result.totalDeleted() > 0);
-        assertEquals(1, result.products());
+        assertEquals(3, result.products());
         assertEquals(3, result.mappings());
         assertTrue(result.events() >= 2);
         assertEquals(1, result.commands());
         assertEquals(1, result.exceptions());
 
         assertFalse(productRows.findBySku(demoSku).isPresent());
+        assertFalse(productRows.findBySku("SKU-E02-" + runId).isPresent());
+        assertFalse(productRows.findBySku("SKU-E04-" + runId).isPresent());
         assertTrue(productRows.findBySku(controlSku).isPresent());
+        assertTrue(productRows.findBySku(otherSku).isPresent());
         assertFalse(eventRows.findBySourceAndExternalEventId("qa-sales", "sale-timeout-" + runId).isPresent());
-        assertTrue(eventRows.findBySourceAndExternalEventId("control-source", "control-" + suffix).isPresent());
+        assertTrue(eventRows.findBySourceAndExternalEventId("qa-inventory", "control-" + runId).isPresent());
+        assertTrue(eventRows.findBySourceAndExternalEventId("qa-inventory", "baseline-" + otherRunId).isPresent());
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM demo_configuration WHERE id = 1", Integer.class));
 
         var replay = http.postForEntity("/api/v1/demo/reset",

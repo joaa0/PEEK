@@ -1,5 +1,6 @@
 package io.peek.core.demo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DemoResetService {
     private static final Pattern RUN_ID = Pattern.compile("^(?:DEMO|QA)-[A-Za-z0-9-]{6,80}$");
-    private static final String DEMO_SOURCES = "'qa-sales', 'qa-inventory', 'qa-physical', 'qa-fiscal'";
 
     private final JdbcTemplate jdbc;
 
@@ -21,6 +21,7 @@ public class DemoResetService {
 
     public record ResetResult(String runId, int evidence, int exceptions, int attempts, int commands,
                               int events, int mappingAudit, int mappings, int productAudit, int products) {
+        @JsonProperty("totalDeleted")
         public int totalDeleted() {
             return evidence + exceptions + attempts + commands + events + mappingAudit + mappings
                 + productAudit + products;
@@ -31,14 +32,12 @@ public class DemoResetService {
     public ResetResult reset(String runId) {
         String normalized = validate(runId);
         List<UUID> productIds = ids(
-            "SELECT id FROM product WHERE sku = ? AND category = 'Demo'", "CAM-" + normalized);
-        List<UUID> eventIds = new ArrayList<>(ids(
-            "SELECT id FROM normalized_event WHERE source IN (" + DEMO_SOURCES
-                + ") AND position(? in external_event_id) > 0", normalized));
-        if (!productIds.isEmpty()) {
-            eventIds.addAll(idsIn("SELECT id FROM normalized_event WHERE product_id IN (%s)", productIds));
-        }
-        eventIds = eventIds.stream().distinct().toList();
+            "SELECT id FROM product WHERE sku IN (?, ?, ?) AND category = 'Demo'",
+            "CAM-" + normalized, "SKU-E02-" + normalized, "SKU-E04-" + normalized);
+        // The canonical product is the ownership boundary. A substring of an external
+        // event ID is not: DEMO-ABCDEF would also match DEMO-ABCDEF1.
+        List<UUID> eventIds = productIds.isEmpty() ? List.of()
+            : idsIn("SELECT id FROM normalized_event WHERE product_id IN (%s)", productIds);
 
         List<UUID> commandIds = new ArrayList<>();
         if (!eventIds.isEmpty()) {

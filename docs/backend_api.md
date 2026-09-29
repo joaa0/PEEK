@@ -190,18 +190,22 @@ production data-management endpoint. Request:
 {"runId":"DEMO-1720000000000","confirmation":"RESET_DEMO"}
 ```
 
-The `runId` must use the `DEMO-*` namespace (or the legacy `QA-*` namespace
-already used by earlier versions of the collection). Reset discovers only the
-fictitious product `CAM-<runId>`, its mappings/audit, mock-source events whose
-external ID contains that run ID, their commands/attempts, and their
-exceptions/evidence. Rows are removed in referential order inside one
-transaction. Other products/events and the `demo_configuration` row are not
-modified. Repeating the same reset succeeds with zero deleted rows.
+The `runId` must use the `DEMO-*` namespace (or the legacy `QA-*` namespace).
+Reset selects only the fictitious products `CAM-<runId>`, `SKU-E02-<runId>`,
+and `SKU-E04-<runId>` with category `Demo`. It deletes events linked to those
+product IDs, their commands/attempts, exceptions/evidence, and product/mapping
+audit in referential order inside one transaction. External event IDs are not
+used to infer ownership: one run ID may be a prefix of another. Every demo
+fixture must first create its product so its events carry that product ID.
+Other products/events and the `demo_configuration` row are not modified.
+Repeating the same reset succeeds with zero deleted rows.
 
 The response reports the deleted count for each resource type. The executable
 fixtures in `postman/PEEK-Manual-QA.postman_collection.json` call this endpoint
-before seeding a run. Their source-shaped payloads still enter through
-`/api/v1/mock/*`, so reset/replay does not bypass adapters or reconciliation.
+before seeding a run and twice after the scenarios. E01-E04 source-shaped
+payloads enter through `/api/v1/mock/*`, so reset/replay does not bypass
+adapters or reconciliation. Normal inventory and fiscal confirmation are
+evaluated after their deadlines and checked for the absence of E01/E03.
 E01/E03 use an explicit evaluation `asOf` after the command deadline, providing
 controllable demo time without changing the application clock or waiting in
 real time.
