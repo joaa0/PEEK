@@ -55,8 +55,7 @@ Read:
 
 ## Repository layout
 
-The Backend Core and Integrations & Event Engine are available under `backend/`. The frontend has not
-been scaffolded yet. The selected layout is:
+The Backend Core and Integrations & Event Engine are available under `backend/`. A navigable frontend mock is available under `frontend/`. The selected layout is:
 
 ```text
 .
@@ -118,6 +117,22 @@ full PostgreSQL verification: cd backend && mvn verify
 
 There is no separate lint command yet; Java compilation and tests are the
 current gates. The API contracts and examples are in `docs/backend_api.md`.
+
+## Frontend mock development
+
+The frontend currently uses fictitious local data and does not call the backend API.
+From the repository root:
+
+```text
+cd frontend
+npm ci
+npm run dev
+npm run lint
+npm test
+npm run build
+```
+
+See `frontend/README.md` for the covered screens and mock interaction limits.
 
 ## Repeatable demo fixtures
 
