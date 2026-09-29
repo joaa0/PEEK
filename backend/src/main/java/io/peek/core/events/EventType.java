@@ -1,0 +1,6 @@
+package io.peek.core.events;
+
+public enum EventType {
+    SALE_CONFIRMED, STOCK_UPDATED, INVOICE_ISSUED, GOODS_RECEIVED,
+    PHYSICAL_COUNT, STOCK_ADJUSTED, PHYSICAL_EXIT
+}

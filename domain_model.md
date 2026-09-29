@@ -17,12 +17,65 @@ The initial domain is built around:
 
 The model should remain small enough for the hackathon while preserving clear domain boundaries.
 
-Backend Core implements a minimal canonical `Product` (immutable SKU, name,
-optional description/price/GTIN/category) and `ProductChannelMapping` (one
-mapping per product/channel, optional external ID while pending). Active
-`channel + external ID` resolution must be unique. Missing and inactive
-mappings produce explicit errors. Product records are operational identity,
-not catalog or inventory systems of record.
+The MVP also includes a minimal canonical product identity and channel/source
+mapping, plus inventory and fiscal orchestration command state. These concepts
+support correlation and operational execution; they do not make PEEKio the
+system of record for product content, inventory, or fiscal documents.
+
+## 1.1 Product and ProductChannelMapping
+
+`Product` is the canonical product record created and maintained in PEEKio. It
+has a stable internal ID and the minimum identity needed by the operational
+flow. Depending on the flow, it may include an internal SKU, name, basic
+description, price, optional EAN/GTIN, basic category, and required fiscal
+fields. This is not a complete catalog/PIM record.
+
+`ProductChannelMapping` associates a Product with one destination system and
+the external product identifier assigned by that destination. A pending mapping
+may be persisted before the first propagation; `external_id` is recorded when a
+destination returns it. A source/destination identifier must not map
+ambiguously to multiple active Products.
+
+Events received from systems also resolve to Product through this mapping.
+Product registration in PEEKio and event identity resolution therefore share
+the same canonical identity without moving system-of-record ownership for
+transactions to PEEKio.
+
+## 1.2 ProductPropagationCommand and ProductPropagationAttempt
+
+Saving a Product with selected destinations creates a create/update command for
+each destination. Each destination has its own command status and immutable
+attempt history, so one destination may succeed while another fails. An
+attempt records at minimum the target, operation, request/correlation key,
+idempotency key, start and completion timestamps, result status, returned
+`external_id` when present, and failure evidence when not successful (for
+example, a normalized error code/message and safe response metadata).
+
+Each target's latest status is derived from its command and attempts; an
+aggregate operation must not hide partial success or failure by destination.
+
+Retry/reprocessing creates a new attempt linked to the same Product and target;
+it does not delete or overwrite earlier attempt history. Successful results
+upsert the destination's `ProductChannelMapping`. Destination adapters are
+simulated in the hackathon. A failed attempt remains available to the existing
+investigation/exception presentation without adding a canonical exception
+family by implication.
+
+Mappings must reject conflicting active identities for the same source/channel
+identifier. Missing or inactive mappings remain explicit resolution states and
+must not be silently guessed. Source-specific payloads stay in adapters.
+
+## 1.3 Inventory and Fiscal OrchestrationCommand and Attempt
+
+An orchestration command records requested work, its canonical product and
+external mapping, correlation key, idempotency key, requested state/quantity
+when relevant, status, and timestamps. Each dispatch/retry creates an auditable
+attempt. External confirmation is represented separately from command dispatch
+and linked to the relevant normalized event or external document reference.
+
+Retry/reprocessing reuses the business correlation and preserves prior
+attempts. Duplicate idempotency keys must not duplicate external effects.
+Command status alone is not evidence that the external system completed work.
 
 ---
 
@@ -247,14 +300,6 @@ Difference:              +5
 ```
 
 The system can detect the divergence without immediately knowing its root cause.
-
-The implemented stock snapshot keeps `expected_stock`, `system_stock`, and
-`physical_stock` separate. The first reported `stock_after` seeds the expected
-calculation. Subsequent reported snapshots affect only `system_stock`.
-Confirmed physical counts form auditable checkpoints: the count becomes the
-base for later expected movements without changing earlier events. Unconfirmed
-counts do not reanchor. Without a base or confirmed count, expected stock is
-unknown rather than zero. See `backend_api.md` for exact event/API fields.
 
 ---
 

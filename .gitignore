@@ -1,0 +1,5 @@
+.env
+backend/target/
+backend/.local-postgres/
+.idea/
+*.iml

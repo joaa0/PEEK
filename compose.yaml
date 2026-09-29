@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: peek
+      POSTGRES_USER: peek
+      POSTGRES_PASSWORD: ${PEEK_DB_PASSWORD:-peek_local_only}
+    ports:
+      - "${PEEK_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peek -d peek"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - peek_postgres:/var/lib/postgresql/data
+
+volumes:
+  peek_postgres:

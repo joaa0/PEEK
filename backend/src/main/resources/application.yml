@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${PEEK_DB_URL:jdbc:postgresql://localhost:5432/peek}
+    username: ${PEEK_DB_USER:peek}
+    password: ${PEEK_DB_PASSWORD:peek_local_only}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

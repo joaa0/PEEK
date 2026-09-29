@@ -55,8 +55,8 @@ Read:
 
 ## Repository layout
 
-The source projects have not yet been scaffolded. The intended layout for the
-selected architecture is:
+The Backend Core project is available under `backend/`. The frontend has not
+been scaffolded yet. The selected layout is:
 
 ```text
 .
@@ -80,15 +80,41 @@ selected architecture is:
 - AI: external LLM API behind the backend intelligence module, with a
   deterministic fallback when unavailable.
 
-The stack is selected, but the projects, Compose file, and runnable commands
-are not yet present. The scaffold issues must add reproducible equivalents
-for:
+## Backend Core development
+
+Prerequisites: JDK 21 or newer (the Maven compiler emits Java 21 bytecode),
+Maven 3.9+, and PostgreSQL 16+. Docker Compose can provide PostgreSQL:
 
 ```text
-make dev
-make test
-make lint
-make build
+docker compose up -d postgres
+cd backend
+mvn test
+mvn package
+mvn spring-boot:run
 ```
 
-or equivalent commands through the chosen ecosystem.
+The backend reads `PEEK_DB_URL`, `PEEK_DB_USER`, and `PEEK_DB_PASSWORD`; their
+defaults match `compose.yaml` and `.env.example`. Copy `.env.example` to `.env`
+only if changing Compose settings. `PEEK_DB_PORT` changes the host port; update
+`PEEK_DB_URL` accordingly. The local example password is not a production secret.
+
+Health is available at `GET http://localhost:8080/actuator/health`.
+`mvn test` runs domain tests. `mvn verify` also runs the PostgreSQL API/persistence
+suite against a dedicated `peek_test` database, configured with
+`PEEK_TEST_DB_URL`, `PEEK_TEST_DB_USER`, and `PEEK_TEST_DB_PASSWORD`. The test
+database must already exist; the suite applies and validates Flyway migrations.
+Never point these test variables at a production or shared database.
+With Compose, create the isolated test database once using
+`docker compose exec postgres createdb -U peek peek_test`.
+
+The current standard commands are:
+
+```text
+dev:   cd backend && mvn spring-boot:run
+test:  cd backend && mvn test
+build: cd backend && mvn package
+full PostgreSQL verification: cd backend && mvn verify
+```
+
+There is no separate lint command yet; Java compilation and tests are the
+current gates. The API contracts and examples are in `docs/backend_api.md`.

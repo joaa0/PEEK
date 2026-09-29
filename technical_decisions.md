@@ -76,6 +76,11 @@ The MVP may simulate source systems with mock APIs, local databases, fixtures, o
 
 Real ERP integration is not required.
 
+Mock adapters also cover outbound Product create/update operations. PEEKio
+persists the canonical Product and each per-destination command/attempt/result;
+only the external destination effect is simulated. A successful simulated
+response may return the destination's external product identifier.
+
 ---
 
 ### TD-008 — AI is not a hard dependency for deterministic alerts
@@ -290,17 +295,12 @@ and fail without suppressing deterministic alerts (TD-008, TD-016, TD-018).
 
 ### Decisions still open
 
+- Exact dependency versions and build tooling when the projects are scaffolded.
 - API, event, and exception schemas, plus PostgreSQL table design.
 - External LLM provider/model and operational fallback configuration.
 - Authentication and deployment approach; neither is central to the demo.
 
 Avoid letting deployment work consume time needed for the end-to-end exception flow.
-
-Backend Core selected Maven, Spring Boot 3.5.6, Java 21 bytecode and
-PostgreSQL Flyway migrations. `mvn test` runs domain tests; `mvn verify`
-additionally runs API/persistence tests on a dedicated PostgreSQL database.
-The implemented subset of event, product and exception API/schema contracts is
-documented in `backend_api.md`; remaining orchestration contracts stay open.
 
 ---
 
