@@ -5,6 +5,8 @@ import io.peek.core.events.EventType;
 import io.peek.core.events.NormalizedEvent;
 import io.peek.core.operational_state.StockCalculator.StockSnapshot;
 import io.peek.core.operational_state.StockService;
+import io.peek.core.orchestration.CommandKind;
+import io.peek.core.orchestration.CommandService;
 import io.peek.core.products.ProductService;
 import io.peek.core.products.ProductService.MappingView;
 import io.peek.core.products.ProductService.ProductView;
@@ -21,8 +23,10 @@ public class OperationalContextController {
     private final ProductService products;
     private final StockService stocks;
     private final EventService events;
-    public OperationalContextController(ProductService products, StockService stocks, EventService events) {
-        this.products = products; this.stocks = stocks; this.events = events;
+    private final CommandService commands;
+    public OperationalContextController(ProductService products, StockService stocks, EventService events,
+                                        CommandService commands) {
+        this.products = products; this.stocks = stocks; this.events = events; this.commands = commands;
     }
     public record FiscalView(String status, String documentId, String source, Instant confirmedAt, UUID evidenceEventId) {}
     public record ExecutionView(String status, Instant lastAttemptAt, Instant confirmedAt, List<Object> attempts) {}
@@ -37,7 +41,14 @@ public class OperationalContextController {
             .max(Comparator.comparing(NormalizedEvent::occurredAt));
         FiscalView fiscal = invoices.map(event -> new FiscalView("CONFIRMED", event.invoiceId(), event.source(),
             event.occurredAt(), event.id())).orElse(new FiscalView("UNKNOWN", null, null, null, null));
-        ExecutionView notAvailable = new ExecutionView("NOT_AVAILABLE", null, null, List.of());
-        return new ContextView(product, products.mappings(id), stocks.forSku(product.sku()), notAvailable, notAvailable, fiscal);
+        return new ContextView(product, products.mappings(id), stocks.forSku(product.sku()),
+            execution(id, CommandKind.INVENTORY_SYNC), execution(id, CommandKind.FISCAL), fiscal);
+    }
+    private ExecutionView execution(UUID productId, CommandKind kind) {
+        return commands.forProduct(productId, kind).stream().findFirst()
+            .map(command -> new ExecutionView(command.status().name(),
+                command.attempts().get(command.attempts().size() - 1).dispatchedAt(), command.confirmedAt(),
+                List.copyOf(command.attempts())))
+            .orElse(new ExecutionView("NOT_AVAILABLE", null, null, List.of()));
     }
 }

@@ -56,7 +56,7 @@ class BackendCoreIT {
         assertEquals(HttpStatus.OK, http.getForEntity("/actuator/health", Map.class).getStatusCode());
         assertEquals("UP", http.getForObject("/actuator/health", Map.class).get("status"));
         assertEquals(0, flyway.migrate().migrationsExecuted);
-        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
+        assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM demo_configuration", Integer.class));
     }
 

@@ -38,7 +38,13 @@ public class ExceptionService {
 
     @Transactional
     public ExceptionView create(ExceptionDraft draft) {
+        return createAt(draft, clock.instant());
+    }
+
+    @Transactional
+    public ExceptionView createAt(ExceptionDraft draft, Instant detectedAt) {
         validate(draft);
+        if (detectedAt == null) throw new IllegalArgumentException("detectedAt is required");
         var existing = exceptions.findByCodeAndTriggerEventId(draft.code(), draft.triggerEventId());
         if (existing.isPresent()) return view(existing.get());
         if (!events.existsById(draft.triggerEventId())) throw new NotFoundException("Trigger event not found");
@@ -49,7 +55,7 @@ public class ExceptionService {
         entity.status = ExceptionStatus.OPEN;
         entity.severity = draft.severity();
         entity.title = draft.title();
-        entity.detectedAt = clock.instant();
+        entity.detectedAt = detectedAt;
         entity.productId = draft.productId();
         entity.sku = draft.sku();
         entity.orderId = draft.orderId();
