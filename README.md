@@ -118,3 +118,27 @@ full PostgreSQL verification: cd backend && mvn verify
 
 There is no separate lint command yet; Java compilation and tests are the
 current gates. The API contracts and examples are in `docs/backend_api.md`.
+
+## Repeatable demo fixtures
+
+The executable demo fixtures are versioned in
+`postman/PEEK-Manual-QA.postman_collection.json`. Start the backend with the
+`demo` profile before running the whole collection:
+
+```text
+cd backend
+SPRING_PROFILES_ACTIVE=demo mvn spring-boot:run
+```
+
+On PowerShell, set `$env:SPRING_PROFILES_ACTIVE = "demo"` before the Maven
+command. The first collection group checks health and calls the profile-scoped
+demo reset. The reset accepts only a `DEMO-*` or legacy `QA-*` run identifier
+and deletes only data owned by that identifier. It never truncates tables or
+changes `demo_configuration`.
+
+The collection demonstrates successful inventory and fiscal confirmation,
+E01-E04, failed dispatch followed by idempotent retry, missing confirmation,
+and late confirmation. Timeout scenarios call the evaluation endpoint with an
+explicit instant after the returned command deadline, so the demo requires no
+real waiting. Source-shaped JSON fixture examples used by automated adapter
+tests remain under `backend/src/test/resources/fixtures/`.

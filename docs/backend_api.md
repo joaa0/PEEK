@@ -179,3 +179,29 @@ audit trail but do not erase an exception for a missed process window.
 Error responses have `code`, `message`, and `timestamp`. The codes are
 `INVALID_INPUT`, `MALFORMED_JSON`, `MISSING_HEADER`, `UNSUPPORTED_EVENT_TYPE`,
 `UNSUPPORTED_EXTERNAL_PAYLOAD`, `NOT_FOUND`, and `CONFLICT`.
+
+## Demo reset
+
+`POST /api/v1/demo/reset` exists only when `peek.demo.reset-enabled=true`; the
+provided `demo` Spring profile enables it. It is a local demo utility, not a
+production data-management endpoint. Request:
+
+```json
+{"runId":"DEMO-1720000000000","confirmation":"RESET_DEMO"}
+```
+
+The `runId` must use the `DEMO-*` namespace (or the legacy `QA-*` namespace
+already used by earlier versions of the collection). Reset discovers only the
+fictitious product `CAM-<runId>`, its mappings/audit, mock-source events whose
+external ID contains that run ID, their commands/attempts, and their
+exceptions/evidence. Rows are removed in referential order inside one
+transaction. Other products/events and the `demo_configuration` row are not
+modified. Repeating the same reset succeeds with zero deleted rows.
+
+The response reports the deleted count for each resource type. The executable
+fixtures in `postman/PEEK-Manual-QA.postman_collection.json` call this endpoint
+before seeding a run. Their source-shaped payloads still enter through
+`/api/v1/mock/*`, so reset/replay does not bypass adapters or reconciliation.
+E01/E03 use an explicit evaluation `asOf` after the command deadline, providing
+controllable demo time without changing the application clock or waiting in
+real time.

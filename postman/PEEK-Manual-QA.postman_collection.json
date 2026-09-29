@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "d47f58a0-6c99-4c86-b60e-5ca58e5a2931",
     "name": "PEEK Manual QA",
-    "description": "Testes manuais do Backend Core e Integrations do PEEK. Execute as pastas e requisições na ordem apresentada. Os testes usam somente dados fictícios e salvam IDs nas variáveis da coleção.",
+    "description": "Fixtures executáveis da demo do Backend Core e Integrations do PEEK. Inicie o backend com o profile demo e execute a coleção completa na ordem apresentada. O primeiro grupo limpa somente o runId da demo; todos os payloads são fictícios e passam pelos adapters simulados.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -12,7 +12,7 @@
         "type": "text/javascript",
         "exec": [
           "if (!pm.collectionVariables.get('runId')) {",
-          "  pm.collectionVariables.set('runId', 'QA-' + Date.now());",
+          "  pm.collectionVariables.set('runId', 'DEMO-' + Date.now());",
           "}",
           "if (!pm.collectionVariables.get('scenarioTimesReady')) {",
           "  const base = Date.now() - 3600000;",
@@ -28,7 +28,9 @@
           "  pm.collectionVariables.set('scenarioTimesReady', 'true');",
           "}",
           "pm.collectionVariables.set('nowUtc', new Date().toISOString());",
-          "pm.collectionVariables.set('evaluationAsOf', new Date(Date.now() + 86400000).toISOString());"
+          "pm.collectionVariables.set('evaluationAsOf', new Date(Date.now() + 86400000).toISOString());",
+          "const isolatedKeys = ['runId', 'productId', 'productVersion', 'saleEventId', 'inventoryCommandId', 'countEventId', 'e02ExceptionId', 'retrySaleId', 'retryCommandId', 'retryAsOf', 'exitEventId', 'fiscalCommandId', 'e01SaleId', 'e01CommandId', 'e01AsOf', 'e01LateAt', 'e03ExitId', 'e03CommandId', 'e03AsOf', 'e03LateAt', 'saleAt', 'e02BaselineAt', 'e02SaleAt', 'e02CountAt', 'e04ReceiptAt', 'e04RegistrationAt', 'retrySaleAt', 'fiscalExitAt', 'nowUtc', 'evaluationAsOf'];",
+          "isolatedKeys.forEach(key => { const value = pm.collectionVariables.get(key); if (value !== undefined && value !== '') pm.variables.set(key, value); });"
         ]
       }
     }
@@ -45,14 +47,17 @@
     { "key": "e02ExceptionId", "value": "" },
     { "key": "retrySaleId", "value": "" },
     { "key": "retryCommandId", "value": "" },
+    { "key": "retryAsOf", "value": "" },
     { "key": "exitEventId", "value": "" },
     { "key": "fiscalCommandId", "value": "" },
     { "key": "e01SaleId", "value": "" },
     { "key": "e01CommandId", "value": "" },
     { "key": "e01AsOf", "value": "" },
+    { "key": "e01LateAt", "value": "" },
     { "key": "e03ExitId", "value": "" },
     { "key": "e03CommandId", "value": "" },
-    { "key": "e03AsOf", "value": "" }
+    { "key": "e03AsOf", "value": "" },
+    { "key": "e03LateAt", "value": "" }
   ],
   "item": [
     {
@@ -67,6 +72,17 @@
             "description": "Comprova que Spring Boot, PostgreSQL e Flyway estão operacionais. Esperado: 200 e status UP."
           },
           "event": [{ "listen": "test", "script": { "exec": ["pm.test('HTTP 200', () => pm.response.to.have.status(200));", "pm.test('Backend UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Reset isolado do run da demo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"runId\": \"{{runId}}\",\n  \"confirmation\": \"RESET_DEMO\"\n}" },
+            "url": "{{baseUrl}}/api/v1/demo/reset",
+            "description": "Disponível somente com o profile demo. Remove apenas produtos, eventos, comandos, tentativas e exceções pertencentes ao runId DEMO-*/QA-* informado. Repetir o reset é seguro."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reset executado', () => pm.response.to.have.status(200));", "pm.test('Run correto', () => pm.expect(pm.response.json().runId).to.eql(pm.collectionVariables.get('runId')));"], "type": "text/javascript" } }]
         }
       ]
     },
@@ -239,7 +255,12 @@
         {
           "name": "Dispatch simulado falha com evidência",
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{retrySaleId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-retry-{{runId}}\",\n  \"simulateFailure\": true\n}" }, "url": "{{baseUrl}}/api/v1/commands/inventory-sync", "description": "O switch de teste simula falha do adapter outbound e grava a tentativa imutável." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('retryCommandId', body.id);", "pm.test('Falha auditável', () => { pm.expect(body.status).to.eql('FAILED'); pm.expect(body.attempts[0].errorCode).to.eql('MOCK_INVENTORY_DISPATCH_FAILURE'); });"], "type": "text/javascript" } }]
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('retryCommandId', body.id); pm.collectionVariables.set('retryAsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString());", "pm.test('Falha auditável', () => { pm.expect(body.status).to.eql('FAILED'); pm.expect(body.attempts[0].errorCode).to.eql('MOCK_INVENTORY_DISPATCH_FAILURE'); });"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Falha sem confirmação gera E01 sem espera real",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"asOf\": \"{{retryAsOf}}\"\n}" }, "url": "{{baseUrl}}/api/v1/evaluations", "description": "Avança a avaliação para depois do deadline do comando com falha antes de executar o retry." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Avaliação 200', () => pm.response.to.have.status(200));", "pm.test('Exceção de falha criada', () => { const body = pm.response.json(); pm.expect(body.created + body.alreadyPresent).to.be.above(0); });"], "type": "text/javascript" } }]
         },
         {
           "name": "Retry preserva histórico de tentativas",
@@ -304,7 +325,7 @@
         {
           "name": "E01 - Criar comando pendente",
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{e01SaleId}}\",\n  \"channel\": \"qa-inventory\",\n  \"idempotencyKey\": \"sync-timeout-{{runId}}\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/inventory-sync", "description": "Cria comando aceito que ficará sem STOCK_UPDATED correlacionado." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando pendente criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('e01CommandId', body.id); pm.collectionVariables.set('e01AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString());"], "type": "text/javascript" } }]
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando pendente criado', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('e01CommandId', body.id); pm.collectionVariables.set('e01AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString()); pm.collectionVariables.set('e01LateAt', new Date(Date.parse(body.deadlineAt) + 2000).toISOString());"], "type": "text/javascript" } }]
         },
         {
           "name": "E01 - Avaliar após deadline",
@@ -315,6 +336,16 @@
           "name": "E01 detecta sincronização de estoque não confirmada",
           "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E01", "description": "Comprova que um comando real e vencido sem confirmação gera E01 com evidências." },
           "event": [{ "listen": "test", "script": { "exec": ["pm.test('E01 encontrada', () => { pm.response.to.have.status(200); const row = pm.response.json().find(x => x.triggerEventId === pm.collectionVariables.get('e01SaleId')); pm.expect(row).to.exist; pm.expect(row.code).to.eql('E01'); });"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "E01 - Confirmação tardia permanece auditável",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"changeId\": \"stock-timeout-late-{{runId}}\",\n  \"system\": \"qa-inventory\",\n  \"warehouseSku\": \"INV-CAM-{{runId}}\",\n  \"orderRef\": \"ORDER-TIMEOUT-{{runId}}\",\n  \"receiptRef\": null,\n  \"registeredUnits\": 1,\n  \"onHand\": 96,\n  \"occurredUtc\": \"{{e01LateAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/inventory", "description": "A confirmação chega depois da janela, confirma o comando para o estado atual e não apaga a E01 já registrada." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Confirmação tardia aceita', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "E01 - Comando registra confirmação tardia",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{e01CommandId}}", "description": "Comprova que o evento tardio permanece associado ao comando sem remover a exceção histórica." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando confirmado tardiamente', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationOccurredAt).to.eql(pm.collectionVariables.get('e01LateAt')); });"], "type": "text/javascript" } }]
         }
       ]
     },
@@ -329,7 +360,7 @@
         {
           "name": "E03 - Criar comando fiscal pendente",
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"triggerEventId\": \"{{e03ExitId}}\",\n  \"channel\": \"qa-fiscal\",\n  \"idempotencyKey\": \"fiscal-timeout-{{runId}}\",\n  \"simulateFailure\": false\n}" }, "url": "{{baseUrl}}/api/v1/commands/fiscal", "description": "Cria comando fiscal aceito sem posterior INVOICE_ISSUED." },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando fiscal pendente', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('e03CommandId', body.id); pm.collectionVariables.set('e03AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString());"], "type": "text/javascript" } }]
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Comando fiscal pendente', () => pm.response.to.have.status(201));", "const body = pm.response.json(); pm.collectionVariables.set('e03CommandId', body.id); pm.collectionVariables.set('e03AsOf', new Date(Date.parse(body.deadlineAt) + 1000).toISOString()); pm.collectionVariables.set('e03LateAt', new Date(Date.parse(body.deadlineAt) + 2000).toISOString());"], "type": "text/javascript" } }]
         },
         {
           "name": "E03 - Avaliar após deadline",
@@ -340,6 +371,16 @@
           "name": "E03 detecta saída física sem confirmação fiscal",
           "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/exceptions?status=OPEN&code=E03", "description": "Comprova que uma saída com comando vencido e sem documento correlacionado gera E03." },
           "event": [{ "listen": "test", "script": { "exec": ["pm.test('E03 encontrada', () => { pm.response.to.have.status(200); const row = pm.response.json().find(x => x.triggerEventId === pm.collectionVariables.get('e03ExitId')); pm.expect(row).to.exist; pm.expect(row.code).to.eql('E03'); });"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "E03 - Documento tardio permanece auditável",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"notificationId\": \"invoice-timeout-late-{{runId}}\",\n  \"system\": \"qa-fiscal\",\n  \"documentNumber\": \"INV-TIMEOUT-{{runId}}\",\n  \"orderReference\": \"ORDER-FISCAL-TIMEOUT-{{runId}}\",\n  \"movementReference\": \"MOVE-TIMEOUT-{{runId}}\",\n  \"itemCode\": \"FISC-CAM-{{runId}}\",\n  \"pieces\": 1,\n  \"issuedAt\": \"{{e03LateAt}}\"\n}" }, "url": "{{baseUrl}}/api/v1/mock/fiscal", "description": "Registra documento correlacionado depois do deadline; a E03 histórica permanece disponível." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Documento tardio aceito', () => pm.response.to.have.status(201));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "E03 - Comando registra documento tardio",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/commands/{{e03CommandId}}", "description": "Comprova confirmação posterior sem perda da evidência de timeout." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Fiscal confirmado tardiamente', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.status).to.eql('CONFIRMED'); pm.expect(body.confirmationOccurredAt).to.eql(pm.collectionVariables.get('e03LateAt')); });"], "type": "text/javascript" } }]
         }
       ]
     },
