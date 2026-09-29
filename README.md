@@ -133,3 +133,30 @@ npm run build
 ```
 
 See `frontend/README.md` for the covered screens and mock interaction limits.
+
+## Repeatable demo fixtures
+
+The executable demo fixtures are versioned in
+`postman/PEEK-Manual-QA.postman_collection.json`. Start the backend with the
+`demo` profile before running the whole collection:
+
+```text
+cd backend
+SPRING_PROFILES_ACTIVE=demo mvn spring-boot:run
+```
+
+On PowerShell, set `$env:SPRING_PROFILES_ACTIVE = "demo"` before the Maven
+command. The first collection group checks health and calls the profile-scoped
+demo reset. The reset accepts only a `DEMO-*` or legacy `QA-*` run identifier
+and deletes only state linked to the exact demo products `CAM-<runId>`,
+`SKU-E02-<runId>`, and `SKU-E04-<runId>`. It never truncates tables or changes
+`demo_configuration`. Every scenario creates its product before sending events.
+The final group runs reset twice and verifies that the second call deletes nothing.
+
+The collection demonstrates successful inventory and fiscal confirmation,
+E01-E04, failed dispatch followed by idempotent retry, missing confirmation,
+and late confirmation. E02 and E04 use their own Product Master mappings and
+source-shaped requests through simulated adapters. Timeout scenarios call the evaluation endpoint with an
+explicit instant after the returned command deadline, so the demo requires no
+real waiting. Source-shaped JSON fixture examples used by automated adapter
+tests remain under `backend/src/test/resources/fixtures/`.
