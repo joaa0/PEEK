@@ -485,7 +485,10 @@ they are added, expose reproducible entry points for equivalents of:
 
 or the selected ecosystem's equivalent standard commands.
 
-Update this document with actual commands when the toolchain is established.
+The frontend mock is now scaffolded under `frontend/`. From that directory,
+run `npm ci`, `npm run dev`, `npm run lint`, `npm test`, and `npm run build`.
+Its data and operations are simulated locally; the backend API is not connected.
+Update this section as the integrated toolchain evolves.
 
 ---
 
