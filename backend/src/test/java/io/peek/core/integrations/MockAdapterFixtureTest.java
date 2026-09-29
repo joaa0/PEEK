@@ -26,10 +26,13 @@ class MockAdapterFixtureTest {
         var exit = new MockPhysicalAdapter().translate(fixture("mock-physical-exit", MockPhysicalAdapter.PhysicalNotice.class));
         assertEquals(EventType.SALE_CONFIRMED, EventValidation.validate(sale));
         assertEquals("ORDER-1", sale.orderId());
+        assertEquals("ORDER-1", sale.metadata().get("sourceReference"));
         assertEquals(EventType.STOCK_UPDATED, EventValidation.validate(stock));
         assertEquals("ORDER-1", stock.orderId());
+        assertEquals("stock-fixture-1", stock.metadata().get("sourceReference"));
         assertEquals(EventType.INVOICE_ISSUED, EventValidation.validate(fiscal));
         assertEquals("INV-1", fiscal.invoiceId());
+        assertEquals("INV-1", fiscal.metadata().get("sourceReference"));
         assertEquals(EventType.GOODS_RECEIVED, EventValidation.validate(physical));
         assertEquals("RECEIPT-1", physical.receiptId());
         assertEquals(EventType.PHYSICAL_COUNT, EventValidation.validate(count));
@@ -45,5 +48,14 @@ class MockAdapterFixtureTest {
             null, null, java.math.BigDecimal.ONE, null, java.time.Instant.EPOCH);
         assertThrows(UnsupportedMockPayloadException.class, () -> new MockPhysicalAdapter().translate(unknown));
         assertThrows(IllegalArgumentException.class, () -> new MockSalesAdapter().translate(null));
+        assertThrows(IllegalArgumentException.class, () -> new MockInventoryAdapter().translate(
+            new MockInventoryAdapter.StockNotice("C1", "inventory", "SKU-1", null, null,
+                null, null, java.time.Instant.EPOCH)));
+        assertThrows(IllegalArgumentException.class, () -> new MockFiscalAdapter().translate(
+            new MockFiscalAdapter.FiscalNotice("F1", "fiscal", null, "O1", "M1", "SKU-1",
+                java.math.BigDecimal.ONE, java.time.Instant.EPOCH)));
+        assertThrows(IllegalArgumentException.class, () -> new MockPhysicalAdapter().translate(
+            new MockPhysicalAdapter.PhysicalNotice("T2", "physical", "EXIT", "SKU-1", null,
+                null, null, java.math.BigDecimal.ONE, null, java.time.Instant.EPOCH)));
     }
 }

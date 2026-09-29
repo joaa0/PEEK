@@ -28,7 +28,8 @@ public class OperationalContextController {
     }
     public record FiscalView(String status, String documentId, String source, Instant confirmedAt,
                              Instant documentOccurredAt, UUID evidenceEventId, UUID commandId) {}
-    public record ExecutionView(String status, Instant lastAttemptAt, Instant confirmedAt,
+    public record ExecutionView(UUID commandId, String channel, String status, Instant requestedAt,
+                                Instant deadlineAt, Instant lastAttemptAt, Instant confirmedAt,
                                 List<CommandService.AttemptView> attempts) {}
     public record ContextView(ProductView product, List<MappingView> mappings, StockSnapshot stock,
                                ExecutionView inventorySync, ExecutionView fiscalOrchestration, FiscalView fiscal,
@@ -48,9 +49,10 @@ public class OperationalContextController {
     }
     private ExecutionView execution(UUID productId, CommandKind kind) {
         return commands.forProduct(productId, kind).stream().findFirst()
-            .map(command -> new ExecutionView(command.status().name(),
+            .map(command -> new ExecutionView(command.id(), command.channel(), command.status().name(),
+                command.requestedAt(), command.deadlineAt(),
                 command.attempts().get(command.attempts().size() - 1).dispatchedAt(), command.confirmedAt(),
                 List.copyOf(command.attempts())))
-            .orElse(new ExecutionView("NOT_AVAILABLE", null, null, List.of()));
+            .orElse(new ExecutionView(null, null, "NOT_AVAILABLE", null, null, null, null, List.of()));
     }
 }
