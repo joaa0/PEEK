@@ -28,11 +28,11 @@ public class CommandController {
     }
     @GetMapping("/{id}")
     public CommandService.CommandView get(@PathVariable UUID id) { return service.get(id); }
-    public record RetryInput(boolean simulateFailure) {}
+    public record RetryInput(String idempotencyKey, boolean simulateFailure) {}
     @PostMapping("/{id}/retry")
     public CommandService.CommandView retry(@PathVariable UUID id, @RequestBody RetryInput input) {
         if (input == null) throw new IllegalArgumentException("Retry input is required");
-        return service.retry(id, input.simulateFailure());
+        return service.retry(id, input.idempotencyKey(), input.simulateFailure());
     }
     private ResponseEntity<CommandService.CommandView> created(CommandService.CreateResult result) {
         URI location = URI.create("/api/v1/commands/" + result.command().id());

@@ -71,19 +71,21 @@ public class EvaluationService {
             String missing = correlation.missingTriggerField(trigger, key);
             if (missing != null) { issues.add(new EvaluationIssue(trigger.id(), "MISSING_CORRELATION_KEY", missing)); continue; }
             EventType expectedType = command.kind == CommandKind.INVENTORY_SYNC ? EventType.STOCK_UPDATED : EventType.INVOICE_ISSUED;
-            for (NormalizedEvent candidate : all) {
+            List<NormalizedEvent> scopedCandidates = all.stream().filter(candidate -> candidate.type() == expectedType
+                && candidate.source().equals(command.channel)
+                && command.sku.equals(candidate.sku())
+                && command.externalProductId.equals(candidate.externalProductId())
+                && !candidate.occurredAt().isBefore(command.requestedAt)
+                && !candidate.occurredAt().isAfter(command.deadlineAt)).toList();
+            for (NormalizedEvent candidate : scopedCandidates) {
                 if (candidate.type() == expectedType && candidate.source().equals(command.channel)
                     && command.sku.equals(candidate.sku()) && correlation.compare(trigger, candidate, key) == CorrelationPolicy.Match.MISSING_KEY) {
                     issues.add(new EvaluationIssue(candidate.id(), "MISSING_CORRELATION_KEY",
                         correlation.missingTriggerField(candidate, key)));
                 }
             }
-            boolean confirmedInWindow = all.stream().anyMatch(candidate -> candidate.type() == expectedType
-                && candidate.source().equals(command.channel)
-                && command.externalProductId.equals(candidate.externalProductId())
-                && !candidate.occurredAt().isBefore(command.requestedAt)
-                && !candidate.occurredAt().isAfter(command.deadlineAt)
-                && (expectedType != EventType.STOCK_UPDATED || candidate.stockAfter() != null)
+            boolean confirmedInWindow = scopedCandidates.stream().anyMatch(candidate ->
+                (expectedType != EventType.STOCK_UPDATED || candidate.stockAfter() != null)
                 && (expectedType != EventType.INVOICE_ISSUED || candidate.invoiceId() != null)
                 && correlation.compare(trigger, candidate, key) == CorrelationPolicy.Match.MATCH);
             if (confirmedInWindow || asOf.isBefore(command.deadlineAt)) continue;
@@ -91,20 +93,50 @@ public class EvaluationService {
             List<EvidenceDraft> evidence = new ArrayList<>();
             evidence.add(evidence(trigger, "TRIGGER", "trigger", trigger.externalEventId()));
             evidence.add(detail("COMMAND", "commandId", command.id.toString(), command.requestedAt));
+            evidence.add(detail("COMMAND", "commandStatus", command.status.name(), asOf));
+            evidence.add(detail("MAPPING", "mappingId", command.mappingId.toString(), command.requestedAt));
+            evidence.add(detail("MAPPING", "channel", command.channel, command.requestedAt));
+            evidence.add(detail("MAPPING", "externalProductId", command.externalProductId, command.requestedAt));
+            evidence.add(detail("COMMAND", "requestedAt", command.requestedAt.toString(), command.requestedAt));
             evidence.add(detail("PARAMETER", "deadlineAt", command.deadlineAt.toString(), command.deadlineAt));
-            evidence.add(detail("OBSERVATION", "correlatedConfirmation", "absent within window", asOf));
-            evidence.add(detail("ATTEMPTS", "count", Long.toString(attempts.countByCommandId(command.id)), asOf));
-            if (command.kind == CommandKind.INVENTORY_SYNC && command.expectedStock != null)
+            var history = attempts.findByCommandIdOrderByAttemptNumber(command.id);
+            evidence.add(detail("ATTEMPTS", "count", Integer.toString(history.size()), asOf));
+            for (var attempt : history) {
+                evidence.add(detail("ATTEMPT", "attempt." + attempt.attemptNumber + ".result", attempt.result, attempt.respondedAt));
+                evidence.add(detail("ATTEMPT", "attempt." + attempt.attemptNumber + ".idempotencyKey", attempt.idempotencyKey, attempt.dispatchedAt));
+                if (attempt.externalRequestId != null)
+                    evidence.add(detail("ATTEMPT", "attempt." + attempt.attemptNumber + ".externalRequestId", attempt.externalRequestId, attempt.respondedAt));
+                if (attempt.errorCode != null)
+                    evidence.add(detail("ATTEMPT", "attempt." + attempt.attemptNumber + ".errorCode", attempt.errorCode, attempt.respondedAt));
+                if (attempt.errorMessage != null)
+                    evidence.add(detail("ATTEMPT", "attempt." + attempt.attemptNumber + ".errorMessage", attempt.errorMessage, attempt.respondedAt));
+            }
+            List<NormalizedEvent> mismatched = scopedCandidates.stream()
+                .filter(candidate -> correlation.compare(trigger, candidate, key) == CorrelationPolicy.Match.DIFFERENT).toList();
+            for (NormalizedEvent candidate : mismatched) {
+                evidence.add(evidence(candidate, "UNMATCHED_CONFIRMATION", "referenceMismatch",
+                    candidate.invoiceId() == null ? candidate.externalEventId() : candidate.invoiceId()));
+            }
+            boolean dispatchFailed = history.stream().anyMatch(attempt -> "FAILED".equals(attempt.result));
+            String observed = !mismatched.isEmpty() ? "Confirmation received with a non-matching correlation reference"
+                : dispatchFailed ? "Adapter dispatch failed and no correlated confirmation arrived"
+                : "No correlated confirmation in process window";
+            evidence.add(detail("OBSERVATION", "correlatedConfirmation", observed, asOf));
+            if (command.kind == CommandKind.INVENTORY_SYNC && command.expectedStock != null) {
                 evidence.add(detail("STATE", "expectedStock", number(command.expectedStock), command.requestedAt));
+                var snapshot = stock.calculate(trigger.sku(), all);
+                if (snapshot.systemStock() != null)
+                    evidence.add(detail("STATE", "systemStock", number(snapshot.systemStock()), snapshot.systemUpdatedAt()));
+            }
             String title = code == ExceptionCode.E01 ? "Stock synchronization not confirmed" : "Physical exit without fiscal confirmation";
             String recommendation = code == ExceptionCode.E01 ? "Retry the inventory command or inspect its adapter attempts"
                 : "Check the fiscal reference and retry the simulated fiscal command";
-            ExceptionDraft draft = new ExceptionDraft(code, trigger.id(), Severity.CRITICAL, title,
+            ExceptionDraft draft = new ExceptionDraft(code, trigger.id(), command.id, Severity.CRITICAL, title,
                 trigger.productId(), trigger.sku(), trigger.orderId(), expectedType.name() + " by " + command.deadlineAt,
-                "No correlated confirmation in process window", "timeoutSeconds=" +
+                observed, "timeoutSeconds=" +
                 (code == ExceptionCode.E01 ? config.stockSyncTimeoutSeconds : config.fiscalTimeoutSeconds),
                 "Operational process remains unconfirmed", recommendation, evidence);
-            if (exceptionRows.findByCodeAndTriggerEventId(code, trigger.id()).isPresent()) existing++; else created++;
+            if (exceptionRows.findByCodeAndOperationCommandId(code, command.id).isPresent()) existing++; else created++;
             ids.add(exceptions.createAt(draft, asOf).id());
             if (command.status == CommandStatus.PENDING_CONFIRMATION) {
                 command.status = CommandStatus.TIMED_OUT; command.lastErrorCode = "CONFIRMATION_TIMEOUT";
@@ -129,20 +161,23 @@ public class EvaluationService {
                     evidence.add(detail("PARAMETER", "tolerance", number(config.physicalStockTolerance), trigger.occurredAt()));
                     if (snapshot.baselineEventId() != null) {
                         NormalizedEvent baseline = events.get(snapshot.baselineEventId());
-                        evidence.add(evidence(baseline, "BASELINE", "stockAfter", number(baseline.stockAfter())));
+                        boolean checkpoint = baseline.type() == EventType.PHYSICAL_COUNT;
+                        BigDecimal baselineValue = checkpoint ? baseline.quantity() : baseline.stockAfter();
+                        evidence.add(evidence(baseline, checkpoint ? "CHECKPOINT" : "BASELINE",
+                            checkpoint ? "physicalCount" : "stockAfter", number(baselineValue)));
                     }
                     for (UUID usedId : snapshot.usedEventIds()) {
                         if (usedId.equals(snapshot.baselineEventId())) continue;
                         NormalizedEvent used = events.get(usedId);
                         evidence.add(evidence(used, "MOVEMENT", used.type().name(), number(used.quantity())));
                     }
-                    ExceptionDraft draft = new ExceptionDraft(ExceptionCode.E02, trigger.id(), Severity.WARNING,
+                    ExceptionDraft draft = new ExceptionDraft(ExceptionCode.E02, trigger.id(), null, Severity.WARNING,
                         "Physical stock diverges from expected stock", trigger.productId(), trigger.sku(), trigger.orderId(),
                         number(snapshot.expectedStock()), number(trigger.quantity()),
                         "tolerance=" + number(config.physicalStockTolerance),
                         "Inventory balance may be inaccurate; cause is a hypothesis pending investigation",
                         "Recount the item and reconcile movements before adjusting stock", evidence);
-                    if (exceptionRows.findByCodeAndTriggerEventId(ExceptionCode.E02, trigger.id()).isPresent()) existing++; else created++;
+                    if (exceptionRows.findByCodeAndTriggerEventIdAndOperationCommandIdIsNull(ExceptionCode.E02, trigger.id()).isPresent()) existing++; else created++;
                     ids.add(exceptions.createAt(draft, asOf).id());
                 }
             }
@@ -162,11 +197,11 @@ public class EvaluationService {
                         evidence.add(evidence(registration, "REGISTRATION", "registeredQuantity", number(registration.quantity())));
                     evidence.add(detail("CALCULATION", "delta", number(difference), asOf));
                     evidence.add(detail("PARAMETER", "tolerance", number(config.receiptTolerance), asOf));
-                    ExceptionDraft draft = new ExceptionDraft(ExceptionCode.E04, trigger.id(), Severity.WARNING,
+                    ExceptionDraft draft = new ExceptionDraft(ExceptionCode.E04, trigger.id(), null, Severity.WARNING,
                         "Receipt quantity differs from inventory registration", trigger.productId(), trigger.sku(), null,
                         number(trigger.quantity()), number(registered), "tolerance=" + number(config.receiptTolerance),
                         "Receipt and inventory are inconsistent", "Reconcile the receipt and inventory registration", evidence);
-                    if (exceptionRows.findByCodeAndTriggerEventId(ExceptionCode.E04, trigger.id()).isPresent()) existing++; else created++;
+                    if (exceptionRows.findByCodeAndTriggerEventIdAndOperationCommandIdIsNull(ExceptionCode.E04, trigger.id()).isPresent()) existing++; else created++;
                     ids.add(exceptions.createAt(draft, asOf).id());
                 }
             }

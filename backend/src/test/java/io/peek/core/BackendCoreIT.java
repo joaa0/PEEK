@@ -56,7 +56,7 @@ class BackendCoreIT {
         assertEquals(HttpStatus.OK, http.getForEntity("/actuator/health", Map.class).getStatusCode());
         assertEquals("UP", http.getForObject("/actuator/health", Map.class).get("status"));
         assertEquals(0, flyway.migrate().migrationsExecuted);
-        assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
+        assertEquals(3, jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM demo_configuration", Integer.class));
     }
 
@@ -69,6 +69,13 @@ class BackendCoreIT {
         assertEquals(HttpStatus.OK, http.postForEntity("/api/v1/products", input, Map.class).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, http.postForEntity("/api/v1/products",
             new ProductInput(sku, "Different", null, null, null, null), Map.class).getStatusCode());
+        HttpHeaders productHeaders = new HttpHeaders();
+        productHeaders.set("If-Match-Version", created.getBody().get("version").toString());
+        var updatedProduct = http.exchange("/api/v1/products/" + productId, HttpMethod.PUT,
+            new HttpEntity<>(new ProductInput(sku, "Fictitious item updated", null,
+                new BigDecimal("12.00"), null, null), productHeaders), Map.class);
+        assertEquals(HttpStatus.OK, updatedProduct.getStatusCode());
+        assertEquals(2, http.getForObject("/api/v1/products/" + productId + "/history", List.class).size());
 
         String externalId = "EXT-" + UUID.randomUUID();
         String path = "/api/v1/products/" + productId + "/mappings";
@@ -76,6 +83,8 @@ class BackendCoreIT {
         var mapped = http.postForEntity(path, mapping, Map.class);
         assertEquals(HttpStatus.CREATED, mapped.getStatusCode());
         assertEquals(HttpStatus.OK, http.postForEntity(path, mapping, Map.class).getStatusCode());
+        assertEquals(HttpStatus.CREATED, http.postForEntity(path,
+            new MappingInput("pending-channel", "   ", MappingStatus.PENDING), Map.class).getStatusCode());
         assertEquals(sku, http.getForObject("/api/v1/product-mappings/resolve?channel=demo-inventory&externalId=" + externalId,
             Map.class).get("sku"));
         assertEquals(HttpStatus.NOT_FOUND, http.getForEntity("/api/v1/product-mappings/resolve?channel=demo-inventory&externalId=missing",
@@ -95,6 +104,7 @@ class BackendCoreIT {
             Map.class).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, http.exchange("/api/v1/product-mappings/" + mappingId, HttpMethod.PUT,
             new HttpEntity<>(mapping, headers), Map.class).getStatusCode());
+        assertEquals(2, http.getForObject("/api/v1/product-mappings/" + mappingId + "/history", List.class).size());
     }
 
     @Test void eventIngestionDistinguishesDuplicateInvalidUnsupportedAndConflict() {
@@ -154,15 +164,14 @@ class BackendCoreIT {
                 "missing", "O-42", null, null, null, BigDecimal.ONE, null, null, Map.of()), Map.class).getStatusCode());
         ingest(source, "invoice", "INVOICE_ISSUED", sku, null, null, "O-42", null, "INV-42", null);
         Map<?, ?> context = http.getForObject("/api/v1/products/" + productId + "/context", Map.class);
-        assertEquals("CONFIRMED", ((Map<?, ?>) context.get("fiscal")).get("status"));
-        assertEquals("INV-42", ((Map<?, ?>) context.get("fiscal")).get("documentId"));
+        assertEquals("UNKNOWN", ((Map<?, ?>) context.get("fiscal")).get("status"));
     }
 
     @Test void exceptionDetailFilterResolutionAndEvidenceAreIdempotent() {
         String sku = "E-" + UUID.randomUUID();
         var trigger = events.ingest(event("physical-" + UUID.randomUUID(), "count", "PHYSICAL_COUNT",
             sku, "93", null, null, null, null, true)).event();
-        ExceptionDraft draft = new ExceptionDraft(ExceptionCode.E02, trigger.id(), Severity.WARNING,
+        ExceptionDraft draft = new ExceptionDraft(ExceptionCode.E02, trigger.id(), null, Severity.WARNING,
             "Physical stock differs", null, sku, null, "95", "93", "tolerance=1", null,
             "Recount the item", List.of(new EvidenceDraft(trigger.id(), "PHYSICAL_COUNT", trigger.source(),
                 "Physical count", "93", trigger.occurredAt())));

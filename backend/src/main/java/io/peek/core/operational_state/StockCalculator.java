@@ -11,7 +11,8 @@ import java.util.UUID;
 
 public final class StockCalculator {
     public record StockSnapshot(String sku, BigDecimal expectedStock, BigDecimal systemStock,
-                                BigDecimal physicalStock, UUID baselineEventId, UUID checkpointEventId,
+                                BigDecimal physicalStock, UUID initialBaselineEventId, UUID baselineEventId,
+                                UUID checkpointEventId,
                                 Instant systemUpdatedAt, Instant physicalCountedAt, List<UUID> usedEventIds) {}
 
     public StockSnapshot calculate(String sku, List<NormalizedEvent> sourceEvents) {
@@ -19,6 +20,7 @@ public final class StockCalculator {
         BigDecimal system = null;
         BigDecimal physical = null;
         UUID baseline = null;
+        UUID initialBaseline = null;
         UUID checkpoint = null;
         Instant systemAt = null;
         Instant physicalAt = null;
@@ -37,6 +39,7 @@ public final class StockCalculator {
                         if (expected == null) {
                             expected = system;
                             baseline = event.id();
+                            initialBaseline = event.id();
                             used.add(event.id());
                         }
                     }
@@ -49,6 +52,7 @@ public final class StockCalculator {
                         physical = event.quantity();
                         physicalAt = event.occurredAt();
                         expected = physical;
+                        baseline = event.id();
                         checkpoint = event.id();
                         used.clear();
                         used.add(event.id());
@@ -57,7 +61,7 @@ public final class StockCalculator {
                 default -> { }
             }
         }
-        return new StockSnapshot(sku, expected, system, physical, baseline, checkpoint,
+        return new StockSnapshot(sku, expected, system, physical, initialBaseline, baseline, checkpoint,
             systemAt, physicalAt, List.copyOf(used));
     }
 }

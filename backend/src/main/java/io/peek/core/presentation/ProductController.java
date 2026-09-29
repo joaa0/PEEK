@@ -47,9 +47,17 @@ public class ProductController {
     }
     @GetMapping("/api/v1/products/{id}/mappings")
     public List<MappingView> mappings(@PathVariable UUID id) { return products.mappings(id); }
+    @GetMapping("/api/v1/products/{id}/history")
+    public List<ProductService.ProductAuditView> productHistory(@PathVariable UUID id) {
+        return products.productHistory(id);
+    }
     @PutMapping("/api/v1/product-mappings/{id}")
     public MappingView updateMapping(@PathVariable UUID id, @RequestHeader("If-Match-Version") long version,
                                      @RequestBody MappingInput input) { return products.updateMapping(id, input, version); }
+    @GetMapping("/api/v1/product-mappings/{id}/history")
+    public List<ProductService.MappingAuditView> mappingHistory(@PathVariable UUID id) {
+        return products.mappingHistory(id);
+    }
     @GetMapping("/api/v1/product-mappings/resolve")
     public ProductView resolve(@RequestParam String channel, @RequestParam String externalId) {
         return products.get(products.resolve(channel, externalId).productId());

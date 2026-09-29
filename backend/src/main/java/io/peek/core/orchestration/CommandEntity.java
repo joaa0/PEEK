@@ -32,6 +32,7 @@ public class CommandEntity {
     @Enumerated(EnumType.STRING) public CommandStatus status;
     @Column(name = "confirmation_event_id") public UUID confirmationEventId;
     @Column(name = "confirmed_at") public Instant confirmedAt;
+    @Column(name = "confirmation_occurred_at") public Instant confirmationOccurredAt;
     @Column(name = "external_document_id") public String externalDocumentId;
     @Column(name = "last_error_code") public String lastErrorCode;
     @Version public long version;

@@ -17,7 +17,8 @@ and representation returns `200` with the existing product; changing fields
 under an existing SKU returns `409`. `GET /api/v1/products` and
 `GET /api/v1/products/{id}` read products. `PUT /api/v1/products/{id}` replaces
 mutable fields and requires `If-Match-Version: <version>`. The canonical SKU is
-immutable; stale versions return `409`.
+immutable; stale versions return `409`. `GET /api/v1/products/{id}/history`
+returns the immutable `CREATED`/`UPDATED` snapshots recorded for that product.
 
 `POST /api/v1/products/{id}/mappings` accepts:
 
@@ -34,6 +35,9 @@ the external ID or status while retaining the same channel. Resolve an active
 mapping with `GET /api/v1/product-mappings/resolve?channel=demo-inventory&externalId=EXT-CAM-001`.
 An absent mapping returns `404`; an inactive mapping returns `409`. The unique
 database index prevents an ambiguous active identity.
+`GET /api/v1/product-mappings/{id}/history` returns the mapping audit snapshots.
+Whitespace-only external IDs are normalized to null before applying status
+invariants.
 
 ## Canonical event ingestion
 
@@ -72,10 +76,13 @@ stored. Without a baseline or confirmed count, `expectedStock` is null rather
 than an invented zero. An unconfirmed count does not change the calculation.
 
 `GET /api/v1/products/{id}/context` combines canonical product/mappings, the
-stock snapshot and the latest confirmed `INVOICE_ISSUED` event when present.
+stock snapshot, related exceptions, and command state.
 Inventory and fiscal command slots report the latest command status and attempt
-history, or `NOT_AVAILABLE` when no command exists. A document is
-`CONFIRMED` only when an invoice event exists; otherwise it is `UNKNOWN`.
+history, or `NOT_AVAILABLE` when no command exists. A fiscal document is
+`CONFIRMED` only when an `INVOICE_ISSUED` event has confirmed that product's
+correlated fiscal command. An unrelated invoice event cannot change the
+product context. The fiscal view exposes command, evidence event, external
+document, confirmation receipt time, and document occurrence time.
 
 ## Exceptions
 
@@ -87,14 +94,17 @@ accepts `{"note":"Count verified"}` and records `resolvedAt`. Repeating the
 same resolution is idempotent; a different note after resolution returns `409`.
 
 Creation is an internal application service for deterministic E01–E04 rules.
-It requires a trigger event and nonempty referenced
-evidence. A unique `(code, trigger_event_id)` constraint prevents duplicate
-exceptions from reprocessing. `POST /api/v1/evaluations` runs the evaluator
+It requires a trigger event and nonempty referenced evidence. E01/E03 identity
+is `(code, operation_command_id)`, so independent channel commands from one
+trigger retain independent exceptions. E02/E04 use `(code, trigger_event_id)`.
+`POST /api/v1/evaluations` runs the evaluator
 with `{"asOf":"2026-01-01T14:35:00Z"}` and returns `created`,
 `alreadyPresent`, exception IDs, and explicit missing-correlation/baseline
 issues. Repeating a run does not duplicate exceptions. E01 and E03 require a
 PEEKio command and an elapsed deadline; a lone sale or exit is not treated as
-a failed dispatch. E02 compares a confirmed count against the expected stock
+a failed dispatch. Their evidence contains the command, mapping/channel,
+correlation keys, deadline, expected state, every dispatch attempt and any
+mismatched candidate confirmations. E02 compares a confirmed count against the expected stock
 immediately before that count; E04 sums inventory registrations with the same
 receipt ID and SKU. Timeouts and tolerances come from `demo_configuration`.
 
@@ -130,16 +140,22 @@ The target channel must have an active Product Master mapping. A new command
 returns `201`; the same kind/idempotency key, trigger and channel returns
 `200` without another dispatch; conflicting reuse returns `409`. The response
 includes requested quantity, expected stock when relevant, deadline, status,
-and immutable attempt history. `simulateFailure` is a test-only switch on the
-mock dispatch adapter. `ACCEPTED` means dispatch acceptance, never stock or
+and immutable attempt history. Inventory and fiscal dispatches cross separate
+outbound adapter boundaries. `simulateFailure` is a test-only switch on those
+mock adapters. `ACCEPTED` means dispatch acceptance, never stock or
 document confirmation. Confirmation requires a later canonical event from the
 target channel with matching external product ID, SKU and order ID (inventory)
 or the configured fiscal reference. An invoice ID is recorded only from
 `INVOICE_ISSUED`; the service does not issue a real fiscal document.
 
-`GET /api/v1/commands/{id}` reads status and attempts.
-`POST /api/v1/commands/{id}/retry` accepts `{"simulateFailure":false}` only
-for `FAILED` or `TIMED_OUT` commands and appends another immutable attempt.
+`GET /api/v1/commands/{id}` reads status and attempts, including the immutable
+idempotency key for each attempt.
+`POST /api/v1/commands/{id}/retry` accepts
+`{"idempotencyKey":"retry-sync-1842-1","simulateFailure":false}` only for
+`FAILED` or `TIMED_OUT` commands and appends another immutable attempt. Reusing
+the same retry key returns the already recorded result without dispatching or
+adding an attempt; a different retry key is rejected once the command is no
+longer retryable.
 The fiscal key is `demo_configuration.fiscal_correlation_key`, either
 `ORDER_ID_AND_SKU` (default) or `MOVEMENT_ID_AND_SKU`. Other settings in that
 single configuration row are `stock_sync_timeout_seconds`,

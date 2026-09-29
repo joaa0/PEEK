@@ -28,7 +28,8 @@ public class CommandConfirmationService {
             if (!matches(command, confirmation)) continue;
             command.status = CommandStatus.CONFIRMED;
             command.confirmationEventId = confirmation.id();
-            command.confirmedAt = confirmation.occurredAt();
+            command.confirmedAt = confirmation.receivedAt();
+            command.confirmationOccurredAt = confirmation.occurredAt();
             command.externalDocumentId = confirmation.invoiceId();
             command.lastErrorCode = null;
             commands.save(command);

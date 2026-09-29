@@ -21,6 +21,9 @@ class MockAdapterFixtureTest {
         var stock = new MockInventoryAdapter().translate(fixture("mock-inventory", MockInventoryAdapter.StockNotice.class));
         var fiscal = new MockFiscalAdapter().translate(fixture("mock-fiscal", MockFiscalAdapter.FiscalNotice.class));
         var physical = new MockPhysicalAdapter().translate(fixture("mock-physical", MockPhysicalAdapter.PhysicalNotice.class));
+        var count = new MockPhysicalAdapter().translate(fixture("mock-physical-count", MockPhysicalAdapter.PhysicalNotice.class));
+        var adjustment = new MockPhysicalAdapter().translate(fixture("mock-physical-adjustment", MockPhysicalAdapter.PhysicalNotice.class));
+        var exit = new MockPhysicalAdapter().translate(fixture("mock-physical-exit", MockPhysicalAdapter.PhysicalNotice.class));
         assertEquals(EventType.SALE_CONFIRMED, EventValidation.validate(sale));
         assertEquals("ORDER-1", sale.orderId());
         assertEquals(EventType.STOCK_UPDATED, EventValidation.validate(stock));
@@ -29,6 +32,13 @@ class MockAdapterFixtureTest {
         assertEquals("INV-1", fiscal.invoiceId());
         assertEquals(EventType.GOODS_RECEIVED, EventValidation.validate(physical));
         assertEquals("RECEIPT-1", physical.receiptId());
+        assertEquals(EventType.PHYSICAL_COUNT, EventValidation.validate(count));
+        assertEquals(true, count.confirmed());
+        assertEquals(EventType.STOCK_ADJUSTED, EventValidation.validate(adjustment));
+        assertEquals("MOVE-ADJ-1", adjustment.movementId());
+        assertEquals(EventType.PHYSICAL_EXIT, EventValidation.validate(exit));
+        assertEquals("ORDER-1", exit.orderId());
+        assertEquals("exit-fixture-1", exit.metadata().get("sourceReference"));
     }
     @Test void unknownPhysicalKindAndMissingFieldsAreExplicit() {
         var unknown = new MockPhysicalAdapter.PhysicalNotice("T1", "physical", "OTHER", "A", null,

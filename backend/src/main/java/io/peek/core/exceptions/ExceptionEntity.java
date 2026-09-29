@@ -16,6 +16,7 @@ public class ExceptionEntity {
     @Id public UUID id;
     @Enumerated(EnumType.STRING) public ExceptionCode code;
     @Column(name = "trigger_event_id") public UUID triggerEventId;
+    @Column(name = "operation_command_id") public UUID operationCommandId;
     @Enumerated(EnumType.STRING) public ExceptionStatus status;
     @Enumerated(EnumType.STRING) public Severity severity;
     public String title;
