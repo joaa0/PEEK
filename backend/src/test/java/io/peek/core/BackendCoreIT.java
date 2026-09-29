@@ -19,6 +19,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -125,6 +127,36 @@ class BackendCoreIT {
             event(source, "bad-type", "UNKNOWN", "A", "1", null, null, null, null, null), Map.class).getStatusCode());
         assertEquals(HttpStatus.BAD_REQUEST, http.postForEntity("/api/v1/events",
             event(source, "bad-sale", "SALE_CONFIRMED", "A", "0", null, "O1", null, null, null), Map.class).getStatusCode());
+    }
+
+    @Test void concurrentDuplicateDeliveryCreatesOneStableEvent() throws Exception {
+        String source = "concurrent-" + UUID.randomUUID();
+        String external = "sale-1";
+        EventInput sale = event(source, external, "SALE_CONFIRMED", "A", "5", null,
+            "ORDER-CONCURRENT", null, null, null);
+        var start = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> {
+                start.await();
+                return http.postForEntity("/api/v1/events", sale, Map.class);
+            });
+            var second = executor.submit(() -> {
+                start.await();
+                return http.postForEntity("/api/v1/events", sale, Map.class);
+            });
+            start.countDown();
+            var responses = List.of(first.get(), second.get());
+            assertEquals(1, responses.stream().filter(row -> row.getStatusCode() == HttpStatus.CREATED).count());
+            assertEquals(1, responses.stream().filter(row -> row.getStatusCode() == HttpStatus.OK).count());
+            assertEquals(responses.get(0).getBody().get("id"), responses.get(1).getBody().get("id"));
+            assertEquals(responses.get(0).getBody().get("receivedAt"), responses.get(1).getBody().get("receivedAt"));
+            assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM normalized_event WHERE source = ? AND external_event_id = ?",
+                Integer.class, source, external));
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test void stockAndContextExposeDistinctEvidenceBackedStates() {

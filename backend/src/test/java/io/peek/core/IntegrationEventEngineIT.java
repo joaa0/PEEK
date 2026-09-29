@@ -22,6 +22,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -75,6 +77,13 @@ class IntegrationEventEngineIT {
         assertTrue(command.created());
         assertEquals(CommandStatus.PENDING_CONFIRMATION, command.command().status());
         assertEquals(1, command.command().attempts().size());
+        Map<?, ?> pendingContext = http.getForObject("/api/v1/products/" + f.productId() + "/context", Map.class);
+        Map<?, ?> pendingExecution = (Map<?, ?>) pendingContext.get("inventorySync");
+        assertEquals("PENDING_CONFIRMATION", pendingExecution.get("status"));
+        assertEquals(command.command().id().toString(), pendingExecution.get("commandId"));
+        assertEquals(f.inventoryChannel(), pendingExecution.get("channel"));
+        assertNotNull(pendingExecution.get("requestedAt"));
+        assertNotNull(pendingExecution.get("deadlineAt"));
         assertFalse(commands.create(CommandKind.INVENTORY_SYNC, input).created());
         assertEquals(HttpStatus.CONFLICT, http.postForEntity("/api/v1/commands/inventory-sync",
             new CommandService.CommandInput(saleId, f.inventoryChannel(), "another-" + saleId, false), Map.class).getStatusCode());
@@ -89,7 +98,12 @@ class IntegrationEventEngineIT {
         assertEquals(HttpStatus.CREATED, http.postForEntity("/api/v1/mock/inventory", confirmed, Map.class).getStatusCode());
         assertEquals(CommandStatus.CONFIRMED, commands.get(command.command().id()).status());
         assertNotNull(commands.get(command.command().id()).confirmationEventId());
-        assertEquals(0, evaluator.evaluate(command.command().deadlineAt().plusSeconds(1)).created());
+        Map<?, ?> confirmedContext = http.getForObject("/api/v1/products/" + f.productId() + "/context", Map.class);
+        assertEquals("CONFIRMED", ((Map<?, ?>) confirmedContext.get("inventorySync")).get("status"));
+        evaluator.evaluate(command.command().deadlineAt().plusSeconds(1));
+        assertEquals(0, jdbc.queryForObject(
+            "SELECT count(*) FROM operational_exception WHERE code = 'E01' AND operation_command_id = ?",
+            Integer.class, command.command().id()));
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM operation_attempt WHERE command_id = ?", Integer.class, command.command().id()));
     }
 
@@ -103,6 +117,8 @@ class IntegrationEventEngineIT {
             new CommandService.CommandInput(sale.id(), f.inventoryChannel(), "sync-" + sale.id(), true)).command();
         assertEquals(CommandStatus.FAILED, command.status());
         assertEquals("MOCK_INVENTORY_DISPATCH_FAILURE", command.attempts().get(0).errorCode());
+        Map<?, ?> failedContext = http.getForObject("/api/v1/products/" + f.productId() + "/context", Map.class);
+        assertEquals("FAILED", ((Map<?, ?>) failedContext.get("inventorySync")).get("status"));
         assertEquals(0, evaluator.evaluate(command.deadlineAt().minusNanos(1)).created());
         var result = evaluator.evaluate(command.deadlineAt().plusSeconds(1));
         assertEquals(1, result.created());
@@ -123,6 +139,47 @@ class IntegrationEventEngineIT {
         assertEquals(2, ((List<?>) replay.getBody().get("attempts")).size());
         assertEquals(HttpStatus.CONFLICT, http.postForEntity("/api/v1/commands/" + command.id() + "/retry",
             Map.of("idempotencyKey", "retry-2", "simulateFailure", false), Map.class).getStatusCode());
+    }
+
+    @Test void concurrentRetryWithSameKeyCreatesOneAuditableAttempt() throws Exception {
+        Fixture f = fixture();
+        Instant now = Instant.now();
+        var sale = events.ingest(new EventInput(f.salesChannel(), "S-" + UUID.randomUUID(), "SALE_CONFIRMED",
+            now.minusSeconds(1), null, null, f.salesItem(), "O-CONCURRENT", null, null, null,
+            BigDecimal.ONE, null, null, Map.of())).event();
+        var command = commands.create(CommandKind.INVENTORY_SYNC,
+            new CommandService.CommandInput(sale.id(), f.inventoryChannel(), "sync-" + sale.id(), true)).command();
+        var start = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> {
+                start.await();
+                return http.postForEntity("/api/v1/commands/" + command.id() + "/retry",
+                    Map.of("idempotencyKey", "concurrent-retry", "simulateFailure", true), Map.class);
+            });
+            var second = executor.submit(() -> {
+                start.await();
+                return http.postForEntity("/api/v1/commands/" + command.id() + "/retry",
+                    Map.of("idempotencyKey", "concurrent-retry", "simulateFailure", true), Map.class);
+            });
+            start.countDown();
+            assertEquals(HttpStatus.OK, first.get().getStatusCode());
+            assertEquals(HttpStatus.OK, second.get().getStatusCode());
+            assertEquals(2, commands.get(command.id()).attempts().size());
+            assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM operation_attempt WHERE command_id = ? AND idempotency_key = ?",
+                Integer.class, command.id(), "concurrent-retry"));
+            var accepted = commands.retry(command.id(), "recovery-after-concurrent-retry", false);
+            assertEquals(CommandStatus.PENDING_CONFIRMATION, accepted.status());
+            var confirmation = new MockInventoryAdapter.StockNotice("C-" + UUID.randomUUID(),
+                f.inventoryChannel(), f.inventoryItem(), "O-CONCURRENT", null, BigDecimal.ONE,
+                new BigDecimal("99"), accepted.requestedAt().plusSeconds(1));
+            assertEquals(HttpStatus.CREATED,
+                http.postForEntity("/api/v1/mock/inventory", confirmation, Map.class).getStatusCode());
+            assertEquals(CommandStatus.CONFIRMED, commands.get(command.id()).status());
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test void physicalCountAndReceiptUseBaselineToleranceAndReceiptCorrelation() {

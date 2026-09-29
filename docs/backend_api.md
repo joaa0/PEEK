@@ -20,6 +20,12 @@ mutable fields and requires `If-Match-Version: <version>`. The canonical SKU is
 immutable; stale versions return `409`. `GET /api/v1/products/{id}/history`
 returns the immutable `CREATED`/`UPDATED` snapshots recorded for that product.
 
+Example `201`/`200` response:
+
+```json
+{"id":"<product UUID>","sku":"CAM-001","name":"Demo camera","description":"Fictitious item","price":120.00,"gtin":null,"category":"Demo","active":true,"createdAt":"2026-01-01T12:00:00Z","updatedAt":"2026-01-01T12:00:00Z","version":0}
+```
+
 `POST /api/v1/products/{id}/mappings` accepts:
 
 ```json
@@ -38,6 +44,12 @@ database index prevents an ambiguous active identity.
 `GET /api/v1/product-mappings/{id}/history` returns the mapping audit snapshots.
 Whitespace-only external IDs are normalized to null before applying status
 invariants.
+
+Example `201`/`200` mapping response:
+
+```json
+{"id":"<mapping UUID>","productId":"<product UUID>","channel":"demo-inventory","externalId":"EXT-CAM-001","status":"ACTIVE","createdAt":"2026-01-01T12:01:00Z","updatedAt":"2026-01-01T12:01:00Z","version":0}
+```
 
 ## Canonical event ingestion
 
@@ -78,7 +90,8 @@ than an invented zero. An unconfirmed count does not change the calculation.
 `GET /api/v1/products/{id}/context` combines canonical product/mappings, the
 stock snapshot, related exceptions, and command state.
 Inventory and fiscal command slots report the latest command status and attempt
-history, or `NOT_AVAILABLE` when no command exists. A fiscal document is
+history, command ID, channel, request/deadline timestamps and confirmation time,
+or `NOT_AVAILABLE` when no command exists. A fiscal document is
 `CONFIRMED` only when an `INVOICE_ISSUED` event has confirmed that product's
 correlated fiscal command. An unrelated invoice event cannot change the
 product context. The fiscal view exposes command, evidence event, external
@@ -164,5 +177,5 @@ All evaluations take an explicit UTC instant. Late confirmations remain in the
 audit trail but do not erase an exception for a missed process window.
 
 Error responses have `code`, `message`, and `timestamp`. The codes are
-`INVALID_INPUT`, `MALFORMED_JSON`, `UNSUPPORTED_EVENT_TYPE`,
+`INVALID_INPUT`, `MALFORMED_JSON`, `MISSING_HEADER`, `UNSUPPORTED_EVENT_TYPE`,
 `UNSUPPORTED_EXTERNAL_PAYLOAD`, `NOT_FOUND`, and `CONFLICT`.
