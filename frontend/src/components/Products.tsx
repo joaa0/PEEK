@@ -633,7 +633,7 @@ export default function Products({ navigate }: { navigate: Navigate }) {
       <header className="page-intro">
         <div>
           <div className="eyebrow">Identidade operacional</div>
-          <h1>Produtos e mappings</h1>
+          <h1>Produtos</h1>
           <p>Cadastro canônico mínimo e status por sistema.</p>
         </div>
         <button className="button primary" onClick={() => setCreating(true)}>

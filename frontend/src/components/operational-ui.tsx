@@ -352,7 +352,7 @@ export function StockComparison({
         <article>
           <span>Saldo esperado · expected_stock</span>
           <strong>{numeric(stock.expectedStock)}</strong>
-          <small>Cálculo PEEKio a partir dos eventos</small>
+          <small>Cálculo PEEK a partir dos eventos</small>
           <small>Âncora: {stock.baselineEventId ?? "Sem baseline"}</small>
         </article>
         <article className={code === "E01" ? "highlight" : ""}>
