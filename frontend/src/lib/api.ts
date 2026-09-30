@@ -13,6 +13,8 @@ import type {
   ProductInput,
   Propagation,
   Stock,
+  DemoReset,
+  Evaluation,
 } from "./contracts";
 
 export class ApiError extends Error {
@@ -158,6 +160,34 @@ export class PeekApi {
   }
   stock(sku: string) {
     return this.request<Stock>("/stocks/" + encodeURIComponent(sku));
+  }
+  resetDemo(runId: string) {
+    return this.request<DemoReset>("/demo/reset", "POST", {
+      runId,
+      confirmation: "RESET_DEMO",
+    });
+  }
+  mockEvent(
+    source: "sales" | "inventory" | "physical" | "fiscal",
+    payload: Record<string, unknown>,
+  ) {
+    return this.request<CanonicalEvent>("/mock/" + source, "POST", payload);
+  }
+  createCommand(
+    kind: "inventory-sync" | "fiscal",
+    triggerEventId: string,
+    channel: string,
+    idempotencyKey: string,
+  ) {
+    return this.request<Command>("/commands/" + kind, "POST", {
+      triggerEventId,
+      channel,
+      idempotencyKey,
+      simulateFailure: false,
+    });
+  }
+  evaluate(asOf: string) {
+    return this.request<Evaluation>("/evaluations", "POST", { asOf });
   }
   event(id: string) {
     return this.request<CanonicalEvent>("/events/" + encodeURIComponent(id));

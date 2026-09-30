@@ -463,3 +463,29 @@ prompt. Approval is a separate human decision in that occurrence; only the
 PEEK engine can provide VERIFIED. Setup and fallback are in
 [mcp_agent.md](mcp_agent.md); the local validation record is in
 [jev_agent_validation.md](jev_agent_validation.md).
+
+## 12. Interactive scenario runner
+
+`/simulation` centralizes Normal, E01, E02, E03 and E04 using the existing
+source adapters, inventory/fiscal commands and deterministic evaluation.
+Normal confirms stock and fiscal commands and a matching physical count.
+E01 omits the stock confirmation (expected 95, system 100); E02 confirms
+stock 95 and counts 93; E03 omits fiscal confirmation; E04 receives 50 and
+registers 47 (baseline 100, expected 150, system 147). The screen verifies
+the persisted product context before claiming success and links the generated
+exception and product. It neither accepts E02 checkpoints nor resolves alerts.
+
+The session owns one `DEMO-*` namespace in sessionStorage. Executing another
+scenario replaces only this namespace through `DemoResetService`; reset is
+repeatable and removes partial runs as well. The demo profile must enable
+reset; fixture mode remains read-only. Scenario timestamps start from the
+backend product creation clock, and evaluation advances beyond actual command
+deadlines. Evaluation is global, as already documented by the existing API,
+so run on an isolated demo database. The UI disables overlapping actions.
+
+`/inventory` displays current API snapshots. A confirmed physical count may
+reanchor current expected stock; an open E02 remains marked as a divergence
+and links to the pre-checkpoint detection evidence. Missing evidence is
+shown explicitly. `/overview` aggregates current contexts and exceptions
+without adding analytics. Fiscal links to the read-only `/fiscal` screen; no
+fiscal issuance is implemented by these screens.
