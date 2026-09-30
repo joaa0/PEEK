@@ -77,6 +77,7 @@ public class DemoResetService {
         agentActions += deleteIn("DELETE FROM agent_action_execution WHERE exception_id IN (%s)", exceptionIds);
         int evidence = deleteIn("DELETE FROM exception_evidence WHERE exception_id IN (%s)", exceptionIds);
         int exceptions = deleteIn("DELETE FROM operational_exception WHERE id IN (%s)", exceptionIds);
+        deleteIn("DELETE FROM mock_inventory_correction WHERE command_id IN (%s)", commandIds);
         int attempts = deleteIn("DELETE FROM operation_attempt WHERE command_id IN (%s)", commandIds);
         int commands = deleteIn("DELETE FROM operation_command WHERE id IN (%s)", commandIds);
         int events = deleteIn("DELETE FROM normalized_event WHERE id IN (%s)", eventIds);

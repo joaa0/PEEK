@@ -125,13 +125,14 @@ EvaluationService → estado/evidência → nova consulta do Codex.
 | peek_get_operational_context | exceptionId | context compartilhado com REST e relatedCommands completos. |
 | peek_retry_inventory_sync | commandId, idempotencyKey | Retry operacional de INVENTORY_SYNC de E01 aberta; retorna command, action e replayed. |
 | peek_apply_e02_reconciliation | exceptionId, idempotencyKey, humanApproved=true, approvalNote, decisionFingerprint | Aceita checkpoint físico confirmado existente, somente após autorização humana explícita; retorna action e replayed. |
+| peek_correct_inventory_stock | exceptionId, mappingId, idempotencyKey, decisionFingerprint | Solicita somente o targetStock calculado pelo backend; retorna command, actionId, executionStatus, verificationStatus e replayed. |
 | peek_get_command_status | commandId | Comando, attempts, confirmação, deadline, erros e auditoria. |
 | peek_get_exception_status | exceptionId | Estado PEEK, prova da reconciliação e auditoria. |
 
-E02 exige revisão das evidências e aprovação humana explícita antes de qualquer
-ação. E03/E04 são somente leitura. Comandos fiscais, comandos sem E01 aberta,
+A aceitação de checkpoint E02 exige revisão das evidências e aprovação humana
+explícita. A correção determinística de estoque segue o contrato abaixo. E03/E04 são somente leitura. Comandos fiscais, comandos sem E01 aberta,
 chaves inválidas e novas tentativas em estado não elegível são rejeitados.
-Nenhuma tool resolve exceções diretamente, injeta eventos, altera estoques diretamente ou
+Nenhuma tool resolve exceções diretamente, injeta eventos, edita estoque livremente ou
 executa SQL, shell, filesystem, HTTP genérico ou código. Apenas os argumentos
 declarados nos schemas são aceitos.
 
@@ -314,8 +315,75 @@ documentadas no README. Os testes novos cobrem o protocolo/allowlist,
 autenticação e Origin, reutilização dos serviços, E01/E03, duplicatas e
 concorrência, auditoria, Attempt/adapter existentes, ausência de confirmação,
 saldo/correlação incorretos, resolução manual e confirmação + reconciliação.
-E02 possui apenas a ação de checkpoint sujeita a aprovação humana; E03/E04
+E02 mantém a ação de checkpoint sujeita a aprovação humana e pode solicitar
+a correção de estoque estritamente determinística descrita abaixo; E03/E04
 continuam sem ferramentas de escrita no MCP. O frontend integrado
 usa a API REST para ações explícitas do operador, sem console/chat de agente.
 Resolução manual na UI não representa VERIFIED; a prova de reconciliação
 continua sendo produzida pelo motor.
+
+
+## Correção determinística de estoque — issue #57
+
+`peek_get_operational_context` inclui `correctionCandidates`, uma decisão por
+mapping com canal/identidade externa, contagem física, expectedStock,
+physicalStock, systemStock, tolerance, targetStock, elegibilidade/motivo e
+fingerprint. systemStock vem da observação do canal/mapping escolhido, não de
+outro canal. expectedStock é reconstruído imediatamente antes da contagem
+confirmada atual, para que a adoção automática do checkpoint pelo calculador
+não esconda uma divergência ambígua.
+
+Quando esperado 95 e físico 95 concordam e o canal informa 100, o único alvo é
+95. Se a diferença físico/esperado está dentro da tolerância configurada, a
+política fixa usa **expectedStock**; o Agent não escolhe nem arredonda o alvo.
+Sem baseline independente, confirmação física, observação do mapping ativo,
+produto ativo ou OPEN E01/E02, a escrita é bloqueada. Movimentos ou contagens
+posteriores tornam o checkpoint desatualizado. Eventos futuros, atrasados e
+mudanças de configuração/mapping invalidam a decisão revisada.
+
+A tool recebe somente exceptionId, mappingId, idempotencyKey e
+**decisionFingerprint copiada do candidato revisado**; quantidades e quaisquer
+argumentos extras são recusados pelo schema fechado. Não exige aprovação para
+adotar um checkpoint: é uma ação externa diferente de ACCEPT_PHYSICAL_CHECKPOINT,
+que continua exigindo autorização humana. Casos ambíguos seguem investigação/
+recomendação/intervenção humana; JEV não participa do cálculo do alvo.
+
+InventoryCorrectionService serializa por produto + exceção, revalida os fatos
+na execução e chama a criação interna de INVENTORY_CORRECTION no CommandService.
+O append de eventos, alterações de mappings e dispatch/retry de comandos usam
+o mesmo lock de produto.
+CommandService grava targetStock em requestedQuantity/expectedStock e cria uma
+Attempt imutável; orderId é uma referência exclusiva `inventory-correction:<UUID>`.
+O MockInventoryCorrectionOutboundAdapter grava o efeito simulado separado em
+mock_inventory_correction, com deduplicação por comando, sem gerar confirmação.
+O comando não aceita criação/retry genéricos. Um checkpoint/canal só admite uma
+correção; uma nova chave não repete a decisão, mesmo após falha. A mesma chave e
+fingerprint retornam a mesma auditoria, inclusive após verificação/resolução.
+
+V7 amplia as constraints semânticas de operation_command e
+agent_action_execution e adiciona mapping_id/target_stock. Auditoria registra o
+checkpoint, fingerprint, estado revisado, alvo, identidade/canal, prazo, execução
+e verificação; a tentativa externa continua no modelo existente. Rejeição ou
+exceção do adapter produz FAILED e preserva a tentativa, sem divulgar detalhes
+internos. Aceitação retorna SUCCEEDED/PENDING_VERIFICATION; a confirmação
+precisa vir pelo adapter de entrada/evento existente, fornecendo o orderId do
+comando, origem, produto externo e stockAfter exato.
+
+O append de evento e associação da confirmação ao comando são atômicos.
+EvaluationService, em avaliação posterior, verifica tipo STOCK_UPDATED, alvo
+exato, produto/SKU, canal/identidade, referência exclusiva, ocorreu/recebido
+depois do despacho e dentro do prazo, mapping/checkpoint/fingerprint ainda
+válidos, ausência de evento conflitante e exceção ainda aberta. Somente então
+anexa RECONCILIATION, preserva evidências/eventos anteriores e grava VERIFIED.
+Timeout, resolução manual ou evidência alterada produz FAILED, sem prova.
+Consultas não promovem essa ação a VERIFIED nem reexecutam o efeito externo.
+E03/E04 continuam sem escrita pelo MCP.
+
+`InventoryCorrectionIT` cobre todo o fluxo com PostgreSQL e relógio controlado:
+alvo 95, tolerância, ambiguidade, ausência de contagem/observação, mappings,
+quantidade proibida, fingerprint/checkpoint/eventos desatualizados, replay,
+concorrência, falha/throw do adapter, timeout, confirmação incorreta, prova
+separada, preservação histórica, bypass por retry/criação genéricos e reset.
+
+The correction fingerprint also binds inventory-sync command versions/statuses
+for the selected mapping; an equivalent pending sync blocks a second write.

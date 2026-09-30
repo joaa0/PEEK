@@ -38,7 +38,8 @@ public class AgentActionService {
 
     public record ActionView(UUID id, UUID exceptionId, UUID commandId, String agentType, String toolName,
                              String actionType, String idempotencyKey, Instant startedAt, Instant finishedAt,
-                             String executionStatus, String verificationStatus, String inputSummary, String outputSummary) {}
+                             String executionStatus, String verificationStatus, String inputSummary, String outputSummary,
+                             UUID mappingId, UUID physicalCountEventId, java.math.BigDecimal targetStock, String decisionFingerprint) {}
     public record RetryResult(CommandService.CommandView command, ActionView action, boolean replayed) {}
     public record PhysicalResult(ActionView action, boolean replayed) {}
 
@@ -85,6 +86,8 @@ public class AgentActionService {
         if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 200)
             throw new IllegalArgumentException("idempotencyKey must contain 1 to 200 characters");
         String key = idempotencyKey.trim();
+        // Acquire product before command, matching correction and event append lock order.
+        commands.lockProductForCommand(commandId);
         // Reuse the same command-row lock as CommandService, including audit deduplication.
         var command = commandRows.findByIdForUpdate(commandId)
             .orElseThrow(() -> new NotFoundException("Command not found"));
@@ -146,6 +149,7 @@ public class AgentActionService {
     }
 
     private void refresh(AgentActionExecution action, CommandService.CommandView command) {
+        if (io.peek.core.orchestration.InventoryCorrectionService.TOOL.equals(action.toolName)) return;
         var exception = exceptions.get(action.exceptionId);
         boolean verified = command.status() == CommandStatus.CONFIRMED
             && exception.status() == ExceptionStatus.RESOLVED && exception.reconciledAt() != null
@@ -167,6 +171,6 @@ public class AgentActionService {
     private ActionView view(AgentActionExecution a) {
         return new ActionView(a.id, a.exceptionId, a.commandId, a.agentType, a.toolName, a.actionType,
             a.idempotencyKey, a.startedAt, a.finishedAt, a.executionStatus, a.verificationStatus,
-            a.inputSummary, a.outputSummary);
+            a.inputSummary, a.outputSummary, a.mappingId, a.physicalCountEventId, a.targetStock, a.decisionFingerprint);
     }
 }

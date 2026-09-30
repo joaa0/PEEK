@@ -141,6 +141,25 @@ public class ExceptionService {
         exceptions.flush();
     }
 
+    /** Engine-only correction proof; the original exception and all its evidence remain auditable. */
+    @Transactional
+    public void recordCorrectionReconciliation(UUID exceptionId, UUID confirmationId, Instant asOf) {
+        var entity = exceptions.findByIdForUpdate(exceptionId).orElseThrow();
+        if (entity.status != ExceptionStatus.OPEN || entity.code != ExceptionCode.E01 && entity.code != ExceptionCode.E02)
+            throw new ConflictException("Correction proof requires an OPEN E01/E02");
+        var confirmation = events.findById(confirmationId).orElseThrow();
+        entity.status = ExceptionStatus.RESOLVED; entity.resolvedAt = asOf;
+        entity.resolutionNote = "Guarded inventory correction verified; event=" + confirmationId;
+        entity.reconciliationEventId = confirmationId; entity.reconciledAt = asOf;
+        EvidenceEntity proof = new EvidenceEntity();
+        proof.id = UUID.randomUUID(); proof.exceptionId = exceptionId; proof.eventId = confirmationId;
+        proof.type = "RECONCILIATION"; proof.source = confirmation.source;
+        proof.label = "verifiedCorrectedStock"; proof.value = confirmation.stockAfter.toPlainString();
+        proof.occurredAt = confirmation.occurredAt;
+        proof.position = evidence.findByExceptionIdOrderByPosition(exceptionId).size();
+        evidence.saveAndFlush(proof); exceptions.flush();
+    }
+
     /** Engine-only proof of adoption of an existing confirmed physical checkpoint. */
     @Transactional
     public void recordPhysicalReconciliation(UUID exceptionId, UUID countId, Instant asOf) {

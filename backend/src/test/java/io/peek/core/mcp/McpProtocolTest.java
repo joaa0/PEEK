@@ -47,7 +47,7 @@ class McpProtocolTest {
         verifyNoInteractions(tools);
     }
 
-    @Test void onlyBoundedE01AndHumanApprovedE02ToolsWrite() throws Exception {
+    @Test void onlyBoundedRetryCheckpointAndDeterministicCorrectionToolsWrite() throws Exception {
         var result = rpc("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}").path("result").path("tools");
         var names = new java.util.HashSet<String>();
         int writes = 0;
@@ -56,12 +56,12 @@ class McpProtocolTest {
             assertFalse(tool.path("inputSchema").path("additionalProperties").asBoolean());
             if (!tool.path("annotations").path("readOnlyHint").asBoolean()) {
                 writes++;
-                assertTrue(Set.of("peek_retry_inventory_sync", "peek_apply_e02_reconciliation").contains(tool.get("name").asText()));
+                assertTrue(Set.of("peek_retry_inventory_sync", "peek_apply_e02_reconciliation", "peek_correct_inventory_stock").contains(tool.get("name").asText()));
             }
         }
         assertEquals(Set.of("peek_list_exceptions", "peek_get_exception", "peek_get_operational_context",
-            "peek_retry_inventory_sync", "peek_apply_e02_reconciliation", "peek_get_command_status", "peek_get_exception_status"), names);
-        assertEquals(2, writes);
+            "peek_retry_inventory_sync", "peek_apply_e02_reconciliation", "peek_correct_inventory_stock", "peek_get_command_status", "peek_get_exception_status"), names);
+        assertEquals(3, writes);
         verifyNoInteractions(tools);
     }
 

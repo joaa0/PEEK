@@ -555,7 +555,7 @@ Reconcile the receipt quantity before accepting the inventory update.
 
 A recommendation is not the same as an automated action.
 
-The MVP should not let AI autonomously execute critical operational changes.
+The MVP does not let AI choose arbitrary operational changes; only the explicitly bounded deterministic correction contract below can request an external stock write.
 
 ---
 
@@ -655,3 +655,31 @@ received quantity != recorded quantity beyond tolerance
 8. An operational exception should not crash event processing.
 9. Duplicate event delivery should not duplicate operational effects.
 10. Derived state must be distinguishable from source-reported state.
+
+
+## Deterministic inventory correction
+
+INVENTORY_CORRECTION is an explicit operation_command kind distinct from
+INVENTORY_SYNC. It uses a confirmed PHYSICAL_COUNT trigger, an active Product /
+ProductChannelMapping and a single targetStock derived from independently
+reconstructed pre-count expectedStock. Physical evidence must agree within
+configured tolerance; the selected channel must report a different systemStock.
+Later movements/counts, future evidence, changed mappings/configuration and stale
+fingerprints forbid execution. The quantity policy always selects expectedStock.
+
+requestedQuantity and expectedStock both store the target; orderId is a unique
+correction reference, not an inferred sale. The adapter receives that exact
+quantity. An immutable Attempt records dispatch/result. AgentActionExecution
+adds mappingId and targetStock to the physical checkpoint, decisionFingerprint,
+reviewed-state inputSummary, commandId, execution/verification statuses and
+verificationDeadlineAt. V7 preserves prior action semantics and adds uniqueness
+for correction checkpoint/mapping and exception/mapping. Replays reuse the audit;
+another key cannot repeat a correction. Generic command creation/retry is denied.
+
+mock_inventory_correction records the simulated destination quantity per command
+with deduplication; this effect is not a canonical event or reconciliation proof.
+STOCK_UPDATED must be independently ingested with matching source, external
+product identity, canonical product/SKU, exclusive orderId, exact stockAfter and
+fresh occurredAt/receivedAt. Only a subsequent EvaluationService evaluation can
+append a verifiedCorrectedStock RECONCILIATION and set VERIFIED. No fabricated
+PHYSICAL_COUNT/STOCK_ADJUSTED is added, and historical evidence is unchanged.

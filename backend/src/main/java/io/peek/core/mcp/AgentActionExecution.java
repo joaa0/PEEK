@@ -27,5 +27,7 @@ public class AgentActionExecution {
     @Column(name = "verification_status") public String verificationStatus;
     @Column(name = "input_summary", columnDefinition = "text") public String inputSummary;
     @Column(name = "output_summary", columnDefinition = "text") public String outputSummary;
-    protected AgentActionExecution() {}
+    @Column(name = "mapping_id") public UUID mappingId;
+    @Column(name = "target_stock") public java.math.BigDecimal targetStock;
+    public AgentActionExecution() {}
 }

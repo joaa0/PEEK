@@ -621,3 +621,28 @@ Do not:
 - treat an AI hypothesis as a confirmed root cause;
 - make the dashboard a generic charting/BI product;
 - create dozens of rules before the four canonical exceptions work end-to-end.
+
+
+## Verification of deterministic stock correction (#57)
+
+E01/E02 may expose a separate correction candidate when a confirmed current
+PHYSICAL_COUNT agrees with expectedStock reconstructed before that checkpoint,
+within physicalStockTolerance, while the selected active mapping reports a
+different systemStock. The backend fixes targetStock to expectedStock. The normal
+StockCalculator still adopts confirmed counts; its post-count value alone is
+insufficient to authorize a correction. No E05 or changed E03/E04 rule is added.
+
+INVENTORY_CORRECTION bypasses legacy sale/fiscal command detection because its
+trigger is a physical checkpoint. InventoryCorrectionService verification runs
+from EvaluationService, after dispatch and independent confirmation ingestion.
+It requires an exact STOCK_UPDATED quantity, product/SKU, channel/external ID,
+exclusive correction orderId, occurred/received timestamps between dispatch and
+deadline, unchanged reviewed fingerprint/mapping/checkpoint/configuration, no
+conflicting stock evidence, and an OPEN exception. The confirmation is excluded
+from the reviewed fingerprint comparison, but every other stock-affecting event
+remains included. A pending candidate itself never supplies proof.
+
+Successful verification appends one RECONCILIATION to the original E01/E02 and
+marks its AgentActionExecution VERIFIED. Repeated/concurrent evaluations reuse
+the proof. Adapter failure, timeout, manual resolution or changed evidence yields
+FAILED without reconciliation; polling alone never fabricates resolution.

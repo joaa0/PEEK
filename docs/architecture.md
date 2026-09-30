@@ -578,7 +578,7 @@ show deterministic exception + evidence + static recommendation
 The explicitly enabled local MCP profile exposes a closed set of semantic
 tools to an external Codex client. It reuses domain query services and
 CommandService.retry; it does not embed an LLM provider. E01 inventory retry is
-writable when eligible. E02 exposes only human-approved acceptance of an existing
+writable when eligible. E02 exposes human-approved acceptance of an existing
 confirmed physical checkpoint, audited in agent_action_execution and verified
 by a separate EvaluationService evaluation. E03/E04 remain read-only.
 
@@ -604,3 +604,28 @@ the existing ProductChannelMapping audit path. Failed attempts expose the
 existing EvidenceView shape and shared investigation timeline, without
 fabricating source events or introducing E05. Contract details are in
 `backend_api.md`; executable acceptance evidence is in `frontend_validation.md`.
+
+
+## Guarded stock correction flow
+
+InventoryCorrectionService builds per-mapping deterministic candidates from
+EventService, ProductService, the pre-count StockCalculator and configuration.
+MCP exposes the candidate and a closed peek_correct_inventory_stock request;
+it never accepts a target quantity. Execution locks the product and exception,
+revalidates the reviewed fingerprint and delegates package-private creation of
+INVENTORY_CORRECTION to CommandService. Event appends, mapping writes and command dispatch/retry share
+the product lock to prevent evidence changing during dispatch.
+
+The existing command/attempt/OutboundCommandAdapter model carries the fixed
+target to MockInventoryCorrectionOutboundAdapter. Its destination-effect table
+is separate from canonical events. EventWriter atomically appends an independent
+confirmation and invokes CommandConfirmationService, avoiding a gap between
+visible event evidence and command association. EvaluationService skips correction
+commands in legacy E01/E03 detection and calls the guarded correction verifier
+in a separate evaluation. Exact quantity, identity, reference, freshness,
+unchanged evidence/configuration/checkpoint and OPEN exception are mandatory.
+Only the verifier appends proof and marks the shared agent audit VERIFIED.
+No LLM chooses state, and E03/E04 write capabilities remain unchanged.
+
+The correction fingerprint also binds inventory-sync command versions/statuses
+for the selected mapping; an equivalent pending sync blocks a second write.

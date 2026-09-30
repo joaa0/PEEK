@@ -20,13 +20,15 @@ public class PeekAgentTools {
     private final io.peek.core.reconciliation.E02ReconciliationService physical;
     private final io.peek.core.exceptions.JevContextService jev;
     private final java.time.Clock clock;
+    private final io.peek.core.orchestration.InventoryCorrectionService corrections;
 
     public PeekAgentTools(ExceptionService exceptions, OperationalContextService context,
                           CommandService commands, AgentActionService actions,
                           io.peek.core.reconciliation.E02ReconciliationService physical,
-                          io.peek.core.exceptions.JevContextService jev, java.time.Clock clock) {
+                          io.peek.core.exceptions.JevContextService jev, java.time.Clock clock,
+                          io.peek.core.orchestration.InventoryCorrectionService corrections) {
         this.exceptions = exceptions; this.context = context; this.commands = commands; this.actions = actions;
-        this.physical = physical; this.jev = jev; this.clock = clock;
+        this.physical = physical; this.jev = jev; this.clock = clock; this.corrections = corrections;
     }
 
     public record ExceptionDetails(ExceptionService.ExceptionView exception, CommandService.CommandView command,
@@ -34,7 +36,8 @@ public class PeekAgentTools {
     public record OperationalContext(OperationalContextService.ContextView context,
                                      List<CommandService.CommandView> relatedCommands,
                                      io.peek.core.reconciliation.E02ReconciliationService.Decision factsAndEvidence,
-                                     io.peek.core.exceptions.JevContextService.Interpretation jevInterpretation) {}
+                                     io.peek.core.exceptions.JevContextService.Interpretation jevInterpretation,
+                                     List<io.peek.core.orchestration.InventoryCorrectionService.Candidate> correctionCandidates) {}
     public record CommandDetails(CommandService.CommandView command, List<AgentActionService.ActionView> agentActions) {}
     public record ExceptionState(UUID id, ExceptionCode code, ExceptionStatus status, java.time.Instant resolvedAt,
                                  UUID reconciliationEventId, java.time.Instant reconciledAt,
@@ -64,9 +67,10 @@ public class PeekAgentTools {
         var related = new java.util.ArrayList<CommandService.CommandView>();
         related.addAll(commands.forProduct(exception.productId(), CommandKind.INVENTORY_SYNC));
         related.addAll(commands.forProduct(exception.productId(), CommandKind.FISCAL));
+        related.addAll(commands.forProduct(exception.productId(), CommandKind.INVENTORY_CORRECTION));
         return new OperationalContext(context.forProduct(exception.productId()), List.copyOf(related),
             exception.code() == ExceptionCode.E02 ? physical.inspect(exceptionId, clock.instant()) : null,
-            jev.forException(exception));
+            jev.forException(exception), corrections.candidates(exceptionId));
     }
 
     public AgentActionService.RetryResult retryInventory(UUID id, String key) {
@@ -75,6 +79,11 @@ public class PeekAgentTools {
 
     public AgentActionService.PhysicalResult applyE02(UUID id, String key, Boolean approved, String note, String fingerprint) {
         return actions.applyE02(id, key, approved, note, fingerprint);
+    }
+
+    public io.peek.core.orchestration.InventoryCorrectionService.CorrectionResult correctInventory(
+        UUID exceptionId, UUID mappingId, String key, String fingerprint) {
+        return corrections.correct(exceptionId, mappingId, key, fingerprint);
     }
 
     public CommandDetails commandStatus(UUID id) {

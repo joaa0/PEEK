@@ -259,3 +259,45 @@ The optional `--peek.demo.clock=2026-01-01T12:00:00Z` freezes backend time only
 under the demo profile. Production/default uses the normal UTC clock. Browser
 fixtures use this clock and explicit evaluation instants; see
 `frontend_validation.md` for the ordered execution commands.
+
+
+## Guarded inventory correction via local MCP
+
+There is no generic stock-edit REST endpoint. In the enabled local MCP profile,
+peek_get_operational_context adds correctionCandidates with exception/product/
+mapping/channel/external identity, physicalCountEventId, independent expectedStock,
+physicalStock, target-channel systemStock, tolerance, targetStock,
+decisionFingerprint, eligible and reason. Noneligible candidates have targetStock
+null. E03/E04 return no correction candidates.
+
+Call peek_correct_inventory_stock with exactly:
+
+```json
+{
+  "exceptionId": "<OPEN E01/E02 UUID>",
+  "mappingId": "<reviewed active target mapping UUID>",
+  "idempotencyKey": "stock-correction-1",
+  "decisionFingerprint": "<64 lowercase hex characters from reviewed candidate>"
+}
+```
+
+Unknown arguments, including quantity/targetStock, are protocol errors. Changed,
+ambiguous, duplicate or inactive contexts are tool errors without dispatch.
+Successful dispatch returns command, actionId, executionStatus=SUCCEEDED,
+verificationStatus=PENDING_VERIFICATION and replayed=false. The command kind is
+INVENTORY_CORRECTION; requestedQuantity/expectedStock equal the backend target.
+The same key/fingerprint returns the existing action/command with replayed=true.
+A different key cannot duplicate that checkpoint/mapping. Generic create/retry
+cannot produce or retry this command kind.
+
+The simulated outbound adapter records the effect, but does not auto-confirm it.
+An independent mock inventory notice or normalized STOCK_UPDATED must use the
+command channel, externalProductId, generated orderId and exact stockAfter, with
+fresh timestamps. Command association and event append commit atomically.
+peek_get_command_status exposes attempts and shared action audit (including
+mappingId, physicalCountEventId, targetStock and decisionFingerprint).
+peek_get_exception_status exposes final proof after separate evaluation.
+Only EvaluationService can move the action to VERIFIED. Missing confirmation
+remains pending until timeout; failure, stale evidence or mismatch never claims
+successful reconciliation. V7 is required for schema/semantic constraints and
+the simulated destination-effect table; see mcp_agent.md for complete policy.

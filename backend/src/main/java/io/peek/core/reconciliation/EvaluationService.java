@@ -37,16 +37,19 @@ public class EvaluationService {
     private final ExceptionRepository exceptionRows;
     private final ExceptionService exceptions;
     private final E02ReconciliationService physicalReconciliation;
+    private final io.peek.core.orchestration.InventoryCorrectionService inventoryCorrection;
     private final CorrelationPolicy correlation = new CorrelationPolicy();
     private final StockCalculator stock = new StockCalculator();
 
     public EvaluationService(EventRepository eventRows, EventService events, CommandRepository commands,
                              AttemptRepository attempts, DemoConfigurationRepository configs,
                              ExceptionRepository exceptionRows, ExceptionService exceptions,
-                             E02ReconciliationService physicalReconciliation) {
+                             E02ReconciliationService physicalReconciliation,
+                             io.peek.core.orchestration.InventoryCorrectionService inventoryCorrection) {
         this.eventRows = eventRows; this.events = events; this.commands = commands; this.attempts = attempts;
         this.configs = configs; this.exceptionRows = exceptionRows; this.exceptions = exceptions;
         this.physicalReconciliation = physicalReconciliation;
+        this.inventoryCorrection = inventoryCorrection;
     }
 
     public record EvaluationIssue(UUID triggerEventId, String code, String field) {}
@@ -66,6 +69,7 @@ public class EvaluationService {
         int created = 0;
         int existing = 0;
         for (CommandEntity command : commands.findAll()) {
+            if (command.kind == CommandKind.INVENTORY_CORRECTION) continue;
             if (command.requestedAt.isAfter(asOf)) continue;
             NormalizedEvent trigger = events.get(command.triggerEventId);
             CorrelationPolicy.Key key = command.kind == CommandKind.INVENTORY_SYNC
@@ -235,6 +239,7 @@ public class EvaluationService {
             }
         }
         physicalReconciliation.reconcile(asOf);
+        inventoryCorrection.reconcile(asOf);
         return new EvaluationResult(asOf, created, existing, List.copyOf(ids), List.copyOf(issues));
     }
     private static EvidenceDraft evidence(NormalizedEvent event, String type, String label, String value) {

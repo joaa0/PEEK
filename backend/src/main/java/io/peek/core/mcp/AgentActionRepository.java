@@ -10,5 +10,6 @@ public interface AgentActionRepository extends JpaRepository<AgentActionExecutio
     List<AgentActionExecution> findByCommandIdOrderByStartedAtDesc(UUID commandId);
     List<AgentActionExecution> findByExceptionIdOrderByStartedAtDesc(UUID exceptionId);
     Optional<AgentActionExecution> findByExceptionIdAndToolName(UUID exceptionId, String toolName);
+    Optional<AgentActionExecution> findByExceptionIdAndToolNameAndMappingId(UUID exceptionId, String toolName, UUID mappingId);
     List<AgentActionExecution> findByToolNameAndVerificationStatus(String toolName, String verificationStatus);
 }
