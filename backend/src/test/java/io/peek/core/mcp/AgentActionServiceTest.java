@@ -33,7 +33,7 @@ class AgentActionServiceTest {
         exceptionRows = mock(ExceptionRepository.class); exceptions = mock(ExceptionService.class);
         audits = mock(AgentActionRepository.class);
         service = new AgentActionService(commands, commandRows, exceptions, exceptionRows, audits,
-            Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
+            Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC), mock(io.peek.core.reconciliation.E02ReconciliationService.class));
         row = mock(CommandEntity.class); row.id = commandId; row.kind = CommandKind.INVENTORY_SYNC;
         when(commandRows.findByIdForUpdate(commandId)).thenReturn(Optional.of(row));
         when(audits.findByCommandIdAndToolNameAndIdempotencyKey(any(), any(), any())).thenReturn(Optional.empty());

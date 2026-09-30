@@ -36,14 +36,17 @@ public class EvaluationService {
     private final DemoConfigurationRepository configs;
     private final ExceptionRepository exceptionRows;
     private final ExceptionService exceptions;
+    private final E02ReconciliationService physicalReconciliation;
     private final CorrelationPolicy correlation = new CorrelationPolicy();
     private final StockCalculator stock = new StockCalculator();
 
     public EvaluationService(EventRepository eventRows, EventService events, CommandRepository commands,
                              AttemptRepository attempts, DemoConfigurationRepository configs,
-                             ExceptionRepository exceptionRows, ExceptionService exceptions) {
+                             ExceptionRepository exceptionRows, ExceptionService exceptions,
+                             E02ReconciliationService physicalReconciliation) {
         this.eventRows = eventRows; this.events = events; this.commands = commands; this.attempts = attempts;
         this.configs = configs; this.exceptionRows = exceptionRows; this.exceptions = exceptions;
+        this.physicalReconciliation = physicalReconciliation;
     }
 
     public record EvaluationIssue(UUID triggerEventId, String code, String field) {}
@@ -231,6 +234,7 @@ public class EvaluationService {
                 }
             }
         }
+        physicalReconciliation.reconcile(asOf);
         return new EvaluationResult(asOf, created, existing, List.copyOf(ids), List.copyOf(issues));
     }
     private static EvidenceDraft evidence(NormalizedEvent event, String type, String label, String value) {

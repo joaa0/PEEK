@@ -17,16 +17,24 @@ public class PeekAgentTools {
     private final OperationalContextService context;
     private final CommandService commands;
     private final AgentActionService actions;
+    private final io.peek.core.reconciliation.E02ReconciliationService physical;
+    private final io.peek.core.exceptions.JevContextService jev;
+    private final java.time.Clock clock;
 
     public PeekAgentTools(ExceptionService exceptions, OperationalContextService context,
-                          CommandService commands, AgentActionService actions) {
+                          CommandService commands, AgentActionService actions,
+                          io.peek.core.reconciliation.E02ReconciliationService physical,
+                          io.peek.core.exceptions.JevContextService jev, java.time.Clock clock) {
         this.exceptions = exceptions; this.context = context; this.commands = commands; this.actions = actions;
+        this.physical = physical; this.jev = jev; this.clock = clock;
     }
 
     public record ExceptionDetails(ExceptionService.ExceptionView exception, CommandService.CommandView command,
                                    boolean retryAllowed, List<AgentActionService.ActionView> agentActions) {}
     public record OperationalContext(OperationalContextService.ContextView context,
-                                     List<CommandService.CommandView> relatedCommands) {}
+                                     List<CommandService.CommandView> relatedCommands,
+                                     io.peek.core.reconciliation.E02ReconciliationService.Decision factsAndEvidence,
+                                     io.peek.core.exceptions.JevContextService.Interpretation jevInterpretation) {}
     public record CommandDetails(CommandService.CommandView command, List<AgentActionService.ActionView> agentActions) {}
     public record ExceptionState(UUID id, ExceptionCode code, ExceptionStatus status, java.time.Instant resolvedAt,
                                  UUID reconciliationEventId, java.time.Instant reconciledAt,
@@ -56,11 +64,17 @@ public class PeekAgentTools {
         var related = new java.util.ArrayList<CommandService.CommandView>();
         related.addAll(commands.forProduct(exception.productId(), CommandKind.INVENTORY_SYNC));
         related.addAll(commands.forProduct(exception.productId(), CommandKind.FISCAL));
-        return new OperationalContext(context.forProduct(exception.productId()), List.copyOf(related));
+        return new OperationalContext(context.forProduct(exception.productId()), List.copyOf(related),
+            exception.code() == ExceptionCode.E02 ? physical.inspect(exceptionId, clock.instant()) : null,
+            jev.forException(exception));
     }
 
     public AgentActionService.RetryResult retryInventory(UUID id, String key) {
         return actions.retryInventory(id, key);
+    }
+
+    public AgentActionService.PhysicalResult applyE02(UUID id, String key, Boolean approved, String note, String fingerprint) {
+        return actions.applyE02(id, key, approved, note, fingerprint);
     }
 
     public CommandDetails commandStatus(UUID id) {

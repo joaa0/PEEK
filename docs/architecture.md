@@ -577,8 +577,10 @@ show deterministic exception + evidence + static recommendation
 
 The explicitly enabled local MCP profile exposes a closed set of semantic
 tools to an external Codex client. It reuses domain query services and
-CommandService.retry; it does not embed an LLM provider. Only E01 inventory
-retry is writable. E02/E03/E04 remain read-only.
+CommandService.retry; it does not embed an LLM provider. E01 inventory retry is
+writable when eligible. E02 exposes only human-approved acceptance of an existing
+confirmed physical checkpoint, audited in agent_action_execution and verified
+by a separate EvaluationService evaluation. E03/E04 remain read-only.
 
 AgentActionExecution audits the request separately from the existing Attempt.
 Confirmation enters through the existing adapters/EventService, and the

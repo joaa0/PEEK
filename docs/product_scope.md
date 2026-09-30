@@ -399,11 +399,13 @@ At minimum, the demo should show:
 
 ## 12. Post-MVP expansion directions
 
-The local external-agent MVP explicitly selects one bounded remediation:
-Codex may request an idempotent INVENTORY_SYNC retry for an OPEN E01 through
-semantic MCP tools. PEEK retains final deterministic verification. This does
-not authorize automatic remediation of E02/E03/E04 or critical arbitrary
-business actions. See [mcp_agent.md](mcp_agent.md).
+The local external-agent MVP supports bounded E01 inventory retry and E02
+acceptance of an existing confirmed physical checkpoint. E01 safe retry may
+be automatic when eligible. E02 requires presentation of facts/evidence and
+separate JEV hypotheses, followed by explicit human approval in Codex App/CLI.
+Human approval authorizes an attempt, not resolution. E03/E04 remain read-only;
+PEEK retains final deterministic verification. This does not authorize autonomous
+E02 correction or arbitrary critical business actions. See [mcp_agent.md](mcp_agent.md).
 
 These are future directions, not current requirements:
 

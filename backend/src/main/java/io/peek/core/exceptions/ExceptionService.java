@@ -141,6 +141,26 @@ public class ExceptionService {
         exceptions.flush();
     }
 
+    /** Engine-only proof of adoption of an existing confirmed physical checkpoint. */
+    @Transactional
+    public void recordPhysicalReconciliation(UUID exceptionId, UUID countId, Instant asOf) {
+        var entity = exceptions.findByIdForUpdate(exceptionId).orElseThrow();
+        if (entity.code != ExceptionCode.E02 || entity.status != ExceptionStatus.OPEN) return;
+        var count = events.findById(countId).orElseThrow();
+        if (!entity.triggerEventId.equals(countId) || count.type != io.peek.core.events.EventType.PHYSICAL_COUNT
+            || !count.confirmed || count.quantity == null || asOf.isBefore(entity.detectedAt))
+            throw new ConflictException("Invalid physical reconciliation proof");
+        entity.status = ExceptionStatus.RESOLVED; entity.resolvedAt = asOf;
+        entity.reconciliationEventId = countId; entity.reconciledAt = asOf;
+        entity.resolutionNote = "Approved existing physical checkpoint verified by reconciliation; event=" + countId;
+        EvidenceEntity proof = new EvidenceEntity();
+        proof.id = UUID.randomUUID(); proof.exceptionId = exceptionId; proof.eventId = countId;
+        proof.type = "RECONCILIATION"; proof.source = count.source; proof.label = "verifiedPhysicalCheckpoint";
+        proof.value = count.quantity.toPlainString(); proof.occurredAt = asOf;
+        proof.position = evidence.findByExceptionIdOrderByPosition(exceptionId).size();
+        evidence.saveAndFlush(proof); exceptions.flush();
+    }
+
     private ExceptionEntity require(UUID id) {
         return exceptions.findById(id).orElseThrow(() -> new NotFoundException("Exception not found"));
     }
