@@ -30,6 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(name = "peek.mcp.enabled", havingValue = "true")
 public class McpController {
     public static final String INSTRUCTIONS = "PEEK is the source of truth. Read exception evidence and operational context before acting. "
+        + "For OPEN E01/E02, peek_correct_inventory_stock permits only an eligible correctionCandidates target computed by PEEK, "
+        + "with the exact reviewed mappingId and decisionFingerprint. Never choose or supply a stock quantity. "
         + "OPEN E01 permits safe INVENTORY_SYNC retry automatically when retryAllowed is true. E03/E04 are read-only. "
         + "For OPEN E02, show FACTS / EVIDENCE separately from JEV INTERPRETATION, including expected_stock, physical_stock, "
         + "delta, tolerance, evidence, hypotheses, model confidence and the concrete recommended checkpoint action. "
@@ -129,6 +131,8 @@ public class McpController {
                 case "peek_apply_e02_reconciliation" -> tools.applyE02(uuid(args, "exceptionId"),
                     args.get("idempotencyKey").asText(), args.get("humanApproved").asBoolean(),
                     args.get("approvalNote").asText(), args.get("decisionFingerprint").asText());
+                case "peek_correct_inventory_stock" -> tools.correctInventory(uuid(args, "exceptionId"), uuid(args, "mappingId"),
+                    args.get("idempotencyKey").asText(), args.get("decisionFingerprint").asText());
                 case "peek_get_command_status" -> tools.commandStatus(uuid(args, "commandId"));
                 case "peek_get_exception_status" -> tools.exceptionStatus(uuid(args, "exceptionId"));
                 default -> throw new IllegalArgumentException("Unknown tool");

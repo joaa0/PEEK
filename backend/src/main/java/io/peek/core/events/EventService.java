@@ -95,9 +95,7 @@ public class EventService {
                 })
                 .orElseThrow(() -> race);
         }
-        IngestResult result = new IngestResult(toDomain(saved), true);
-        confirmations.accept(result.event());
-        return result;
+        return new IngestResult(toDomain(saved), true);
     }
 
     public NormalizedEvent get(UUID id) {

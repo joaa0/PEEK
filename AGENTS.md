@@ -24,7 +24,11 @@ The local external Codex agent contract is in `docs/mcp_agent.md`. Reuse
 CommandService.retry and the existing adapters/attempts for E01. E02 may accept
 an existing confirmed physical checkpoint ONLY after Codex presents facts and
 JEV hypotheses separately and receives explicit human approval. Never infer
-human approval. E03/E04 remain read-only. Never expose exception resolution or
+human approval. The explicit issue #57 adds CORRECT_INVENTORY_STOCK: an OPEN
+E01/E02 may request only the backend-derived target for a confirmed current
+physical checkpoint agreeing with independently reconstructed expected stock.
+Use the reviewed mappingId/fingerprint; never accept a free quantity. This bounded
+correction does not require checkpoint-adoption approval. E03/E04 remain read-only. Never expose exception resolution or
 fabricated confirmation; PEEK deterministic reconciliation supplies final verification.
 
 ---
@@ -216,7 +220,7 @@ The following are outside the current hackathon MVP unless scope is explicitly c
 - RFID platform;
 - dozens of real production integrations;
 - general automation builder similar to Zapier;
-- autonomous AI executing critical business actions.
+- autonomous AI choosing critical business actions or stock quantities outside the bounded deterministic correction contract.
 
 Avoid feature creep.
 

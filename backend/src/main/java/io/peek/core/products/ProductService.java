@@ -78,6 +78,10 @@ public class ProductService {
         return view(product);
     }
 
+    /** Shared ordering boundary for evidence append and bounded inventory execution. */
+    @Transactional
+    public void lockForOperation(UUID id) { products.lockById(id).orElseThrow(() -> new NotFoundException("Product not found")); }
+
     @Transactional(readOnly = true)
     public ProductView get(UUID id) { return view(require(id)); }
 
@@ -87,9 +91,11 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductView> list() { return products.findAll().stream().map(ProductService::view).toList(); }
 
+    @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
+
     @Transactional
     public CreateResult<MappingView> addMapping(UUID productId, MappingInput input) {
-        require(productId);
+        products.lockById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
         validate(input);
         String channel = input.channel().trim();
         String externalId = normalizedExternalId(input.externalId());
@@ -121,6 +127,8 @@ public class ProductService {
     public MappingView updateMapping(UUID mappingId, MappingInput input, long expectedVersion) {
         validate(input);
         MappingEntity mapping = requireMapping(mappingId);
+        products.lockById(mapping.productId).orElseThrow();
+        entityManager.refresh(mapping);
         if (mapping.version != expectedVersion) throw new ConflictException("Mapping version is stale");
         if (!mapping.channel.equals(input.channel().trim())) throw new IllegalArgumentException("Channel cannot be changed");
         String externalId = normalizedExternalId(input.externalId());

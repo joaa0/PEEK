@@ -59,6 +59,8 @@ public class CommandService {
 
     @Transactional
     public CreateResult create(CommandKind kind, CommandInput input) {
+        if (kind == CommandKind.INVENTORY_CORRECTION)
+            throw new ConflictException("Inventory correction requires reviewed deterministic evidence through MCP");
         if (input == null || input.triggerEventId() == null || blank(input.channel()) || blank(input.idempotencyKey()))
             throw new IllegalArgumentException("triggerEventId, channel and idempotencyKey are required");
         if (input.channel().length() > 100 || input.idempotencyKey().length() > 200)
@@ -74,6 +76,7 @@ public class CommandService {
         EventType required = kind == CommandKind.INVENTORY_SYNC ? EventType.SALE_CONFIRMED : EventType.PHYSICAL_EXIT;
         if (trigger.type() != required || trigger.productId() == null || blank(trigger.sku()) || trigger.quantity() == null)
             throw new IllegalArgumentException("Trigger must be a mapped " + required + " event with quantity");
+        products.lockForOperation(trigger.productId());
         CorrelationPolicy.Key key = kind == CommandKind.INVENTORY_SYNC ? CorrelationPolicy.Key.ORDER_ID_AND_SKU
             : fiscalKey();
         String missing = correlation.missingTriggerField(trigger, key);
@@ -101,12 +104,39 @@ public class CommandService {
         return new CreateResult(view(command), true);
     }
 
+    // Package-private: only the guarded correction service can create this semantic command.
+    CommandView createCorrection(InventoryCorrectionService.Candidate decision, String key) {
+        if (!decision.eligible() || decision.targetStock() == null)
+            throw new ConflictException("Eligible backend-derived correction required");
+        if (commands.findByKindAndIdempotencyKey(CommandKind.INVENTORY_CORRECTION, key).isPresent()
+            || commands.findByKindAndTriggerEventIdAndChannel(CommandKind.INVENTORY_CORRECTION,
+                decision.physicalCountEventId(), decision.channel()).isPresent())
+            throw new ConflictException("Correction idempotency key or checkpoint/channel already executed");
+        var config = configurations.findById((short) 1).orElseThrow();
+        CommandEntity command = new CommandEntity();
+        command.id = UUID.randomUUID(); command.kind = CommandKind.INVENTORY_CORRECTION;
+        command.idempotencyKey = key; command.triggerEventId = decision.physicalCountEventId();
+        command.productId = decision.productId(); command.mappingId = decision.mappingId();
+        command.channel = decision.channel(); command.externalProductId = decision.externalProductId();
+        command.sku = products.get(decision.productId()).sku();
+        command.orderId = "inventory-correction:" + command.id;
+        command.requestedQuantity = decision.targetStock(); command.expectedStock = decision.targetStock();
+        command.requestedAt = clock.instant(); command.deadlineAt = command.requestedAt.plusSeconds(config.stockSyncTimeoutSeconds);
+        command.status = CommandStatus.REQUESTED;
+        commands.saveAndFlush(command);
+        dispatch(command, key, false);
+        return view(command);
+    }
+
     @Transactional
     public CommandView retry(UUID id, String idempotencyKey, boolean simulateFailure) {
         if (blank(idempotencyKey)) throw new IllegalArgumentException("Retry idempotencyKey is required");
         if (idempotencyKey.length() > 200) throw new IllegalArgumentException("Retry idempotencyKey exceeds maximum length");
         String normalizedKey = idempotencyKey.trim();
+        lockProductForCommand(id);
         CommandEntity command = requireForUpdate(id);
+        if (command.kind == CommandKind.INVENTORY_CORRECTION)
+            throw new ConflictException("Correction cannot use generic retry; review a fresh checkpoint");
         if (attempts.findByCommandIdAndIdempotencyKey(id, normalizedKey).isPresent()) return view(command);
         if (command.status != CommandStatus.FAILED && command.status != CommandStatus.TIMED_OUT)
             throw new ConflictException("Only failed or timed-out commands may be retried");
@@ -116,6 +146,12 @@ public class CommandService {
         command.lastErrorCode = null;
         dispatch(command, normalizedKey, simulateFailure);
         return view(command);
+    }
+
+    @Transactional
+    public void lockProductForCommand(UUID id) {
+        // Read only the identity before waiting; do not cache a stale command version.
+        products.lockForOperation(commands.productIdForCommand(id).orElseThrow(() -> new NotFoundException("Command not found")));
     }
 
     @Transactional(readOnly = true)
@@ -144,9 +180,15 @@ public class CommandService {
         attempt.dispatchedAt = now; attempt.respondedAt = now;
         OutboundCommandAdapter adapter = outboundAdapters.get(command.kind);
         if (adapter == null) throw new IllegalStateException("No outbound adapter for " + command.kind);
-        var result = adapter.dispatch(new OutboundCommandAdapter.DispatchRequest(command.id, attempt.attemptNumber,
+        OutboundCommandAdapter.DispatchResult result;
+        try {
+            result = adapter.dispatch(new OutboundCommandAdapter.DispatchRequest(command.id, attempt.attemptNumber,
             command.productId, command.mappingId, command.channel, command.externalProductId, command.sku,
             command.orderId, command.movementId, command.requestedQuantity, command.expectedStock, simulateFailure));
+        } catch (RuntimeException failure) {
+            if (command.kind != CommandKind.INVENTORY_CORRECTION) throw failure;
+            result = new OutboundCommandAdapter.DispatchResult(false, null, "ADAPTER_DISPATCH_ERROR", "Outbound adapter failed");
+        }
         if (!result.accepted()) {
             attempt.result = "FAILED"; attempt.errorCode = result.errorCode();
             attempt.errorMessage = result.errorMessage();

@@ -341,7 +341,7 @@ The following must not be implemented as part of the MVP unless scope is explici
 - generic IoT platform;
 - dozens of real integrations;
 - general automation builder similar to Zapier;
-- autonomous AI executing critical operational decisions.
+- autonomous AI choosing critical operational decisions or arbitrary stock quantities outside the bounded deterministic correction contract.
 
 ---
 
@@ -422,3 +422,20 @@ These are future directions, not current requirements:
 - capacity/ATP/CTP integration.
 
 They should not influence the MVP unless explicitly selected.
+
+
+## Guarded inventory correction (#57)
+
+The local Agent may request CORRECT_INVENTORY_STOCK for an OPEN E01/E02 only
+when a current confirmed physical count agrees with independently reconstructed
+expected stock within configured tolerance and the active target mapping reports
+a different quantity. The backend fixes targetStock to expectedStock. Ambiguous,
+stale, unmapped or duplicate decisions cannot write. No free quantity is accepted.
+
+This is a bounded outbound INVENTORY_CORRECTION, with existing commands/attempts,
+simulated adapter, reviewed fingerprint and shared AgentActionExecution audit.
+Dispatch acceptance is PENDING_VERIFICATION. Separate EvaluationService proof
+requires an exact correlated STOCK_UPDATED from the intended identity after
+dispatch and within the configured window. E03/E04 remain read-only; checkpoint
+adoption still requires explicit human approval. No new exception family, ERP,
+WMS or generic Agent execution is introduced. See mcp_agent.md for the contract.
