@@ -36,7 +36,8 @@ public class ExceptionService {
                                 Severity severity, String title, Instant detectedAt, UUID productId,
                                 String sku, String orderId, String expectedState, String observedState,
                                 String ruleParameter, String impact, String recommendation,
-                                String resolutionNote, Instant resolvedAt, long version, List<EvidenceView> evidence) {}
+                                String resolutionNote, Instant resolvedAt, long version, List<EvidenceView> evidence,
+                                UUID reconciliationEventId, Instant reconciledAt) {}
 
     @Transactional
     public ExceptionView create(ExceptionDraft draft) {
@@ -117,6 +118,29 @@ public class ExceptionService {
         return view(entity);
     }
 
+    /** Called only by deterministic reconciliation after validating the confirmation. */
+    @Transactional
+    public void recordInventoryReconciliation(UUID commandId, UUID confirmationId, Instant asOf) {
+        var found = exceptions.findByCodeAndOperationCommandId(ExceptionCode.E01, commandId);
+        if (found.isEmpty()) return;
+        ExceptionEntity entity = found.get();
+        if (entity.status != ExceptionStatus.OPEN) return;
+        var confirmation = events.findById(confirmationId).orElseThrow();
+        entity.status = ExceptionStatus.RESOLVED;
+        entity.resolvedAt = asOf;
+        entity.resolutionNote = "Reconciliation confirmed inventory stock; event=" + confirmationId;
+        entity.reconciliationEventId = confirmationId;
+        entity.reconciledAt = asOf;
+        EvidenceEntity proof = new EvidenceEntity();
+        proof.id = UUID.randomUUID(); proof.exceptionId = entity.id; proof.eventId = confirmationId;
+        proof.type = "RECONCILIATION"; proof.source = confirmation.source;
+        proof.label = "verifiedStock"; proof.value = confirmation.stockAfter.toPlainString();
+        proof.occurredAt = confirmation.occurredAt;
+        proof.position = evidence.findByExceptionIdOrderByPosition(entity.id).size();
+        evidence.saveAndFlush(proof);
+        exceptions.flush();
+    }
+
     private ExceptionEntity require(UUID id) {
         return exceptions.findById(id).orElseThrow(() -> new NotFoundException("Exception not found"));
     }
@@ -126,7 +150,8 @@ public class ExceptionService {
         return new ExceptionView(e.id, e.code, e.triggerEventId, e.operationCommandId, e.status,
             e.severity, e.title, e.detectedAt,
             e.productId, e.sku, e.orderId, e.expectedState, e.observedState, e.ruleParameter,
-            e.impact, e.recommendation, e.resolutionNote, e.resolvedAt, e.version, rows);
+            e.impact, e.recommendation, e.resolutionNote, e.resolvedAt, e.version, rows,
+            e.reconciliationEventId, e.reconciledAt);
     }
     private static void validate(ExceptionDraft draft) {
         if (draft == null || draft.code() == null || draft.triggerEventId() == null || draft.severity() == null

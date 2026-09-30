@@ -399,6 +399,12 @@ At minimum, the demo should show:
 
 ## 12. Post-MVP expansion directions
 
+The local external-agent MVP explicitly selects one bounded remediation:
+Codex may request an idempotent INVENTORY_SYNC retry for an OPEN E01 through
+semantic MCP tools. PEEK retains final deterministic verification. This does
+not authorize automatic remediation of E02/E03/E04 or critical arbitrary
+business actions. See [mcp_agent.md](mcp_agent.md).
+
 These are future directions, not current requirements:
 
 - additional operational exception types;

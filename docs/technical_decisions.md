@@ -1,5 +1,17 @@
 # Technical Decisions
 
+## TD-MCP-001 — External Codex with a local semantic MCP boundary
+
+Accepted for the restricted E01 MVP: stateless Streamable HTTP in the existing
+Spring MVC process, enabled explicitly, loopback-only with bearer token and
+Origin validation. There are no new backend dependencies, LLM API calls,
+internal agent provider, queues or additional mock ERP.
+
+Only INVENTORY_SYNC retry for an associated OPEN E01 has operational effects.
+CommandService remains responsible for eligibility, idempotency, attempts,
+dispatch and confirmation. The existing evaluator supplies final verification;
+the agent's audit does not replace domain state. See [mcp_agent.md](mcp_agent.md).
+
 ## 1. Purpose
 
 This document separates:

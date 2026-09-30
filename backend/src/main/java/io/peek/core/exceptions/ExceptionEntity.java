@@ -31,6 +31,8 @@ public class ExceptionEntity {
     @Column(columnDefinition = "text") public String recommendation;
     @Column(name = "resolution_note", columnDefinition = "text") public String resolutionNote;
     @Column(name = "resolved_at") public Instant resolvedAt;
+    @Column(name = "reconciliation_event_id") public UUID reconciliationEventId;
+    @Column(name = "reconciled_at") public Instant reconciledAt;
     @Version public long version;
     protected ExceptionEntity() {}
 }

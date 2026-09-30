@@ -1,0 +1,75 @@
+package io.peek.core.mcp;
+
+import io.peek.core.exceptions.ExceptionCode;
+import io.peek.core.exceptions.ExceptionService;
+import io.peek.core.exceptions.ExceptionStatus;
+import io.peek.core.operational_state.OperationalContextService;
+import io.peek.core.orchestration.CommandKind;
+import io.peek.core.orchestration.CommandService;
+import io.peek.core.orchestration.CommandStatus;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PeekAgentTools {
+    private final ExceptionService exceptions;
+    private final OperationalContextService context;
+    private final CommandService commands;
+    private final AgentActionService actions;
+
+    public PeekAgentTools(ExceptionService exceptions, OperationalContextService context,
+                          CommandService commands, AgentActionService actions) {
+        this.exceptions = exceptions; this.context = context; this.commands = commands; this.actions = actions;
+    }
+
+    public record ExceptionDetails(ExceptionService.ExceptionView exception, CommandService.CommandView command,
+                                   boolean retryAllowed, List<AgentActionService.ActionView> agentActions) {}
+    public record OperationalContext(OperationalContextService.ContextView context,
+                                     List<CommandService.CommandView> relatedCommands) {}
+    public record CommandDetails(CommandService.CommandView command, List<AgentActionService.ActionView> agentActions) {}
+    public record ExceptionState(UUID id, ExceptionCode code, ExceptionStatus status, java.time.Instant resolvedAt,
+                                 UUID reconciliationEventId, java.time.Instant reconciledAt,
+                                 List<AgentActionService.ActionView> agentActions) {}
+    public record ExceptionPage(List<ExceptionService.ExceptionView> exceptions, int total, int nextOffset) {}
+
+    public ExceptionPage listExceptions(ExceptionStatus status, ExceptionCode code, int offset, int limit) {
+        if (offset < 0 || limit < 1 || limit > 100) throw new IllegalArgumentException("Invalid pagination");
+        var all = exceptions.list(status, code);
+        int start = Math.min(offset, all.size());
+        int end = start + Math.min(limit, all.size() - start);
+        return new ExceptionPage(all.subList(start, end), all.size(), end < all.size() ? end : -1);
+    }
+
+    public ExceptionDetails getException(UUID id) {
+        var exception = exceptions.get(id);
+        var command = exception.operationCommandId() == null ? null : commands.get(exception.operationCommandId());
+        boolean eligible = exception.code() == ExceptionCode.E01 && exception.status() == ExceptionStatus.OPEN
+            && command != null && command.kind() == CommandKind.INVENTORY_SYNC
+            && (command.status() == CommandStatus.FAILED || command.status() == CommandStatus.TIMED_OUT);
+        return new ExceptionDetails(exception, command, eligible, actions.forException(id));
+    }
+
+    public OperationalContext operationalContext(UUID exceptionId) {
+        var exception = exceptions.get(exceptionId);
+        if (exception.productId() == null) throw new IllegalArgumentException("Exception has no canonical product");
+        var related = new java.util.ArrayList<CommandService.CommandView>();
+        related.addAll(commands.forProduct(exception.productId(), CommandKind.INVENTORY_SYNC));
+        related.addAll(commands.forProduct(exception.productId(), CommandKind.FISCAL));
+        return new OperationalContext(context.forProduct(exception.productId()), List.copyOf(related));
+    }
+
+    public AgentActionService.RetryResult retryInventory(UUID id, String key) {
+        return actions.retryInventory(id, key);
+    }
+
+    public CommandDetails commandStatus(UUID id) {
+        return new CommandDetails(commands.get(id), actions.forCommand(id));
+    }
+
+    public ExceptionState exceptionStatus(UUID id) {
+        var exception = exceptions.get(id);
+        return new ExceptionState(id, exception.code(), exception.status(), exception.resolvedAt(),
+            exception.reconciliationEventId(), exception.reconciledAt(), actions.forException(id));
+    }
+}

@@ -71,6 +71,30 @@ public class EvaluationService {
             String missing = correlation.missingTriggerField(trigger, key);
             if (missing != null) { issues.add(new EvaluationIssue(trigger.id(), "MISSING_CORRELATION_KEY", missing)); continue; }
             EventType expectedType = command.kind == CommandKind.INVENTORY_SYNC ? EventType.STOCK_UPDATED : EventType.INVOICE_ISSUED;
+            // Only the engine can close E01. A dispatch response or manual resolution is not proof.
+            var priorE01 = command.kind == CommandKind.INVENTORY_SYNC
+                ? exceptionRows.findByCodeAndOperationCommandId(ExceptionCode.E01, command.id) : java.util.Optional.<io.peek.core.exceptions.ExceptionEntity>empty();
+            if (priorE01.isPresent() && !asOf.isBefore(priorE01.get().detectedAt)
+                && command.status == CommandStatus.CONFIRMED
+                && command.confirmationEventId != null && command.expectedStock != null) {
+                var confirmation = all.stream().filter(event -> event.id().equals(command.confirmationEventId)
+                    && !event.receivedAt().isAfter(asOf)).findFirst();
+                var history = attempts.findByCommandIdOrderByAttemptNumber(command.id);
+                Instant lastDispatch = history.isEmpty() ? command.requestedAt : history.getLast().dispatchedAt;
+                if (confirmation.isPresent()) {
+                    NormalizedEvent observed = confirmation.get();
+                    if (observed.type() == EventType.STOCK_UPDATED
+                        && command.channel.equals(observed.source())
+                        && command.externalProductId.equals(observed.externalProductId())
+                        && !observed.occurredAt().isBefore(lastDispatch)
+                        && correlation.compare(trigger, observed, key) == CorrelationPolicy.Match.MATCH
+                        && observed.stockAfter() != null
+                        && command.expectedStock.compareTo(observed.stockAfter()) == 0) {
+                        exceptions.recordInventoryReconciliation(command.id, observed.id(), asOf);
+                        continue;
+                    }
+                }
+            }
             List<NormalizedEvent> scopedCandidates = all.stream().filter(candidate -> candidate.type() == expectedType
                 && candidate.source().equals(command.channel)
                 && command.sku.equals(candidate.sku())
@@ -85,7 +109,8 @@ public class EvaluationService {
                 }
             }
             boolean confirmedInWindow = scopedCandidates.stream().anyMatch(candidate ->
-                (expectedType != EventType.STOCK_UPDATED || candidate.stockAfter() != null)
+                (expectedType != EventType.STOCK_UPDATED || candidate.stockAfter() != null
+                    && (command.expectedStock == null || command.expectedStock.compareTo(candidate.stockAfter()) == 0))
                 && (expectedType != EventType.INVOICE_ISSUED || candidate.invoiceId() != null)
                 && correlation.compare(trigger, candidate, key) == CorrelationPolicy.Match.MATCH);
             if (confirmedInWindow || asOf.isBefore(command.deadlineAt)) continue;

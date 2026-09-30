@@ -1,5 +1,20 @@
 # Exception Engine
 
+## E01 recovery through deterministic reconciliation
+
+The local MCP agent can only request an existing inventory retry. It cannot
+resolve exceptions. For an existing E01, EvaluationService checks the stored
+confirmation against channel, external product, SKU/order, latest dispatch
+time and requested expectedStock. A matching stock value and explicit engine
+evaluation close E01, preserve the original failure evidence, append
+RECONCILIATION evidence and persist reconciliationEventId/reconciledAt.
+The evaluation includes the received confirmation and does not precede
+exception detection. Unknown expected stock cannot be verified.
+
+Manual resolution is still supported by REST for operators, but does not
+prove agent success. E02/E03/E04 remediation is not exposed through MCP.
+See [mcp_agent.md](mcp_agent.md) for the complete policy.
+
 ## 1. Purpose
 
 The Exception Engine is the central product capability.

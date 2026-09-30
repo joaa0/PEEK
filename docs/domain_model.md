@@ -77,6 +77,18 @@ Retry/reprocessing reuses the business correlation and preserves prior
 attempts. Duplicate idempotency keys must not duplicate external effects.
 Command status alone is not evidence that the external system completed work.
 
+### External-agent audit and proof
+
+AgentActionExecution records a restricted MCP action separately from Attempt:
+exception/command IDs, agent/tool/action, normalized idempotency key, start/end,
+execution and verification statuses, and safe input/output summaries.
+Its logical identity is (command_id, tool_name, idempotency_key).
+
+For E01, reconciliation_event_id and reconciled_at on OperationalException
+refer to the engine-validated STOCK_UPDATED evidence. Manual resolution does
+not populate these fields. VERIFIED requires this proof as well as the linked
+confirmed command; dispatch acceptance remains PENDING_VERIFICATION.
+
 ---
 
 ## 2. SourceSystem

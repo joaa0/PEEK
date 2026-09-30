@@ -1,0 +1,10 @@
+# Local MCP and REST API share one Spring Boot process. Enable explicitly.
+server:
+  address: 127.0.0.1
+peek:
+  mcp:
+    enabled: true
+    token: ${PEEK_MCP_TOKEN:}
+    reconciliation:
+      enabled: true
+      interval-ms: 1000
