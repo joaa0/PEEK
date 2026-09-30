@@ -480,20 +480,15 @@ PostgreSQL, Spring Data JPA/Hibernate, Flyway, and Docker Compose initially for
 PostgreSQL only. The backend is a modular monolith and accesses an external LLM
 API through an isolated intelligence module.
 
-The source projects and runnable commands have not yet been scaffolded. When
-they are added, expose reproducible entry points for equivalents of:
-
-- `make dev`
-- `make test`
-- `make lint`
-- `make build`
-
-or the selected ecosystem's equivalent standard commands.
-
-The frontend mock is now scaffolded under `frontend/`. From that directory,
-run `npm ci`, `npm run dev`, `npm run lint`, `npm test`, and `npm run build`.
-Its data and operations are simulated locally; the backend API is not connected.
-Update this section as the integrated toolchain evolves.
+Runnable projects are available in backend/ and frontend/. From backend/, use
+Java 21 and Maven 3.9+: mvn test, mvn package, mvn spring-boot:run and mvn verify
+(the latter requires the isolated PostgreSQL test database). From frontend/,
+use Node 22.18+: npm ci, npm run dev, npm run format:check, npm run lint,
+npm test, npm run test:fixtures, npm run build and npm run test:e2e.
+The frontend uses the Spring Boot API by default. npm run dev:fixtures starts
+an explicit read-only fixture API for UI development without PostgreSQL.
+Run builds and browser tests sequentially. See frontend/README.md and
+docs/frontend_validation.md for environment setup and the required execution order.
 
 ---
 
@@ -576,3 +571,4 @@ Pull requests should explain:
 - screenshots for visible UI changes.
 
 Keep changes focused.
+

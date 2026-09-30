@@ -353,3 +353,15 @@ A technical choice is appropriate if it:
 - minimizes unnecessary infrastructure;
 - can evolve without rewriting the domain;
 - does not expand product scope.
+
+### TD-024 — Persist simulated product destination effects and snapshots
+
+**Status:** Implemented for the MVP.
+
+Product propagation freezes the canonical product version/snapshot per target
+command. A unique product/destination simulated record supplies a stable
+external ID. Starts and retries are serialized per product; stale version
+retry is rejected so an old payload cannot overwrite a newer canonical edit.
+A failure result is durable evidence, displayed using the existing EvidenceView
+contract; it does not imply a new canonical exception family. See V5 and
+`backend_api.md`.

@@ -55,7 +55,7 @@ Read:
 
 ## Repository layout
 
-The Backend Core and Integrations & Event Engine are available under `backend/`. A navigable frontend mock is available under `frontend/`. The selected layout is:
+The Spring Boot backend is available under `backend/`; the integrated Next.js frontend is under `frontend/`. The layout is:
 
 ```text
 .
@@ -118,21 +118,41 @@ full PostgreSQL verification: cd backend && mvn verify
 There is no separate lint command yet; Java compilation and tests are the
 current gates. The API contracts and examples are in `docs/backend_api.md`.
 
-## Frontend mock development
+## Repeatable demo fixtures
 
-The frontend currently uses fictitious local data and does not call the backend API.
-From the repository root:
+The executable demo fixtures are versioned in
+`postman/PEEK-Manual-QA.postman_collection.json`. Start the backend with the
+`demo` profile before running the whole collection:
 
 ```text
-cd frontend
-npm ci
-npm run dev
-npm run lint
-npm test
-npm run build
+cd backend
+SPRING_PROFILES_ACTIVE=demo mvn spring-boot:run
 ```
 
-See `frontend/README.md` for the covered screens and mock interaction limits.
+On PowerShell, set `$env:SPRING_PROFILES_ACTIVE = "demo"` before the Maven
+command. The first collection group checks health and calls the profile-scoped
+demo reset. The reset accepts only a `DEMO-*` or legacy `QA-*` run identifier
+and deletes only state linked to the exact demo products `CAM-<runId>`,
+`SKU-E02-<runId>`, and `SKU-E04-<runId>`. It never truncates tables or changes
+`demo_configuration`. Every scenario creates its product before sending events.
+The final group runs reset twice and verifies that the second call deletes nothing.
+
+The collection demonstrates successful inventory and fiscal confirmation,
+E01-E04, failed dispatch followed by idempotent retry, missing confirmation,
+and late confirmation. E02 and E04 use their own Product Master mappings and
+source-shaped requests through simulated adapters. Timeout scenarios call the evaluation endpoint with an
+explicit instant after the returned command deadline, so the demo requires no
+real waiting. Source-shaped JSON fixture examples used by automated adapter
+tests remain under `backend/src/test/resources/fixtures/`.
+
+## Integrated frontend and browser verification
+
+Use `frontend/README.md` to run Next.js and the typed API client.
+`docs/frontend_validation.md` records the exact setup and execution order for
+Maven, TypeScript, Vitest, the fixture API, the build and browser end-to-end tests.
+The browser tests use source-shaped adapter fixtures with fixed time and reset;
+Postman is optional. Product distribution to ERP, Mercado Livre and Shopee is
+simulated by backend adapters while commands, attempts and mappings are persisted.
 
 ## External Codex agent (local MCP)
 
