@@ -572,3 +572,16 @@ show deterministic exception + evidence + static recommendation
 6. Evidence must be preserved.
 7. Timeouts and tolerances should be configurable.
 8. The MVP may use mocks but should preserve realistic boundaries.
+
+## 20. Local external-agent boundary
+
+The explicitly enabled local MCP profile exposes a closed set of semantic
+tools to an external Codex client. It reuses domain query services and
+CommandService.retry; it does not embed an LLM provider. Only E01 inventory
+retry is writable. E02/E03/E04 remain read-only.
+
+AgentActionExecution audits the request separately from the existing Attempt.
+Confirmation enters through the existing adapters/EventService, and the
+EvaluationService independently verifies recovery. A local scheduler invokes
+that engine; no MCP tool can invoke resolution or inject confirmation.
+REST and MCP share OperationalContextService. See [mcp_agent.md](mcp_agent.md).

@@ -1,5 +1,13 @@
 # Demo Scenarios
 
+## Local external-agent E01 demo
+
+The reproducible prepare/watch driver, MCP configuration, recommended Codex
+instruction and VERIFIED/PENDING_VERIFICATION/FAILED checks are documented in
+[mcp_agent.md](mcp_agent.md). The driver feeds the existing mock inventory
+endpoint; Codex uses only semantic tools. Confirmation plus the deterministic
+engine, rather than a tool's return value, determines the final outcome.
+
 ## 1. Purpose
 
 The demo must prove the product thesis through visible operational inconsistencies.

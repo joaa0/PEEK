@@ -1,0 +1,15 @@
+# Copy this section into ~/.codex/config.toml (or a trusted project's config).
+# Export the same PEEK_MCP_TOKEN to the backend AND the local Codex process.
+[mcp_servers.peek]
+url = "http://127.0.0.1:8080/mcp"
+bearer_token_env_var = "PEEK_MCP_TOKEN"
+startup_timeout_sec = 20
+tool_timeout_sec = 30
+enabled_tools = [
+  "peek_list_exceptions",
+  "peek_get_exception",
+  "peek_get_operational_context",
+  "peek_retry_inventory_sync",
+  "peek_get_command_status",
+  "peek_get_exception_status",
+]

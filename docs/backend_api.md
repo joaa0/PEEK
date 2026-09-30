@@ -176,6 +176,13 @@ single configuration row are `stock_sync_timeout_seconds`,
 All evaluations take an explicit UTC instant. Late confirmations remain in the
 audit trail but do not erase an exception for a missed process window.
 
+For E01, a later matching recovery can now resolve the existing exception
+through EvaluationService, preserving that missed-window audit and adding
+reconciliation evidence. The detail includes reconciliationEventId and
+reconciledAt. Manual REST resolution does not set this proof. E03's previous
+late-confirmation behavior is retained. The optional local MCP profile and its
+closed semantic tool contract are documented in [mcp_agent.md](mcp_agent.md).
+
 Error responses have `code`, `message`, and `timestamp`. The codes are
 `INVALID_INPUT`, `MALFORMED_JSON`, `MISSING_HEADER`, `UNSUPPORTED_EVENT_TYPE`,
 `UNSUPPORTED_EXTERNAL_PAYLOAD`, `NOT_FOUND`, and `CONFLICT`.

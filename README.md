@@ -133,3 +133,11 @@ npm run build
 ```
 
 See `frontend/README.md` for the covered screens and mock interaction limits.
+
+## External Codex agent (local MCP)
+
+See [docs/mcp_agent.md](docs/mcp_agent.md) for the local MCP profile, bearer-token
+configuration, restricted E01 retry policy, agent audit and reproducible demo.
+The server is disabled by default. Start with
+`mvn spring-boot:run -Dspring-boot.run.profiles=mcp` from `backend/` after setting
+`PEEK_MCP_TOKEN`. Only the PEEK reconciliation engine can verify recovery.
