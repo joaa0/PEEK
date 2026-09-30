@@ -14,6 +14,9 @@ public class AgentActionExecution {
     @Id public UUID id;
     @Column(name = "exception_id") public UUID exceptionId;
     @Column(name = "command_id") public UUID commandId;
+    @Column(name = "physical_count_event_id") public UUID physicalCountEventId;
+    @Column(name = "decision_fingerprint") public String decisionFingerprint;
+    @Column(name = "verification_deadline_at") public Instant verificationDeadlineAt;
     @Column(name = "agent_type") public String agentType;
     @Column(name = "tool_name") public String toolName;
     @Column(name = "action_type") public String actionType;

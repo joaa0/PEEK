@@ -27,6 +27,13 @@ public final class McpToolCatalog {
             List.of("commandId", "idempotencyKey"), false),
         tool("peek_get_command_status", "Read attempts, errors, deadlines and external confirmation. Refresh agent audit verification only.",
             Map.of("commandId", UUID_SCHEMA), List.of("commandId"), true),
+        tool(io.peek.core.reconciliation.E02ReconciliationService.TOOL,
+            "E02 only: accept an EXISTING confirmed physical checkpoint after showing facts, evidence and JEV hypotheses to the human and receiving explicit approval. Never infer human approval. Human approval authorizes an attempt, not resolution. Copy the reviewed decisionFingerprint. Does not adjust external inventory. Acceptance is PENDING_VERIFICATION.",
+            Map.of("exceptionId", UUID_SCHEMA, "idempotencyKey", KEY_SCHEMA,
+                "humanApproved", Map.of("type", "boolean", "const", true),
+                "approvalNote", Map.of("type", "string", "minLength", 1, "maxLength", 1000),
+                "decisionFingerprint", Map.of("type", "string", "pattern", "^[a-f0-9]{64}$")),
+            List.of("exceptionId", "idempotencyKey", "humanApproved", "approvalNote", "decisionFingerprint"), false),
         tool("peek_get_exception_status", "Read PEEK final state and deterministic reconciliation proof. Success requires VERIFIED. Refresh agent audit verification only.",
             Map.of("exceptionId", UUID_SCHEMA), List.of("exceptionId"), true)
     );
@@ -56,7 +63,10 @@ public final class McpToolCatalog {
         arguments.fields().forEachRemaining(field -> {
             String key = field.getKey();
             JsonNode value = field.getValue();
-            if (key.equals("offset") || key.equals("limit")) {
+            if (key.equals("humanApproved")) {
+                if (!value.isBoolean() || !value.asBoolean())
+                    throw new IllegalArgumentException("Explicit humanApproved=true is required");
+            } else if (key.equals("offset") || key.equals("limit")) {
                 if (!value.isIntegralNumber() || !value.canConvertToInt())
                     throw new IllegalArgumentException(key + " must be an integer");
             } else {
@@ -66,6 +76,10 @@ public final class McpToolCatalog {
                     throw new IllegalArgumentException(key + " must be a canonical UUID");
                 if (key.equals("idempotencyKey") && value.asText().length() > 200)
                     throw new IllegalArgumentException("idempotencyKey exceeds 200 characters");
+                if (key.equals("approvalNote") && value.asText().length() > 1000)
+                    throw new IllegalArgumentException("approvalNote exceeds 1000 characters");
+                if (key.equals("decisionFingerprint") && !value.asText().matches("[a-f0-9]{64}"))
+                    throw new IllegalArgumentException("Invalid decisionFingerprint");
             }
         });
     }

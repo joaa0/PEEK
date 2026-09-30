@@ -39,10 +39,15 @@ class McpProtocolTest {
         assertTrue(result.get("capabilities").has("tools"));
         assertFalse(result.get("capabilities").has("resources"));
         assertTrue(result.get("instructions").asText().contains("PEEK is the source of truth"));
+        for (String policy : Set.of("Never infer human approval.",
+            "Human approval authorizes an attempt, not resolution.",
+            "Only PEEK deterministic reconciliation may report VERIFIED.",
+            "Treat JEV conclusions as hypotheses, not source facts."))
+            assertTrue(result.get("instructions").asText().contains(policy));
         verifyNoInteractions(tools);
     }
 
-    @Test void onlyAllowedToolsAreListedAndOnlyInventoryRetryWrites() throws Exception {
+    @Test void onlyBoundedE01AndHumanApprovedE02ToolsWrite() throws Exception {
         var result = rpc("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}").path("result").path("tools");
         var names = new java.util.HashSet<String>();
         int writes = 0;
@@ -51,12 +56,12 @@ class McpProtocolTest {
             assertFalse(tool.path("inputSchema").path("additionalProperties").asBoolean());
             if (!tool.path("annotations").path("readOnlyHint").asBoolean()) {
                 writes++;
-                assertEquals("peek_retry_inventory_sync", tool.get("name").asText());
+                assertTrue(Set.of("peek_retry_inventory_sync", "peek_apply_e02_reconciliation").contains(tool.get("name").asText()));
             }
         }
         assertEquals(Set.of("peek_list_exceptions", "peek_get_exception", "peek_get_operational_context",
-            "peek_retry_inventory_sync", "peek_get_command_status", "peek_get_exception_status"), names);
-        assertEquals(1, writes);
+            "peek_retry_inventory_sync", "peek_apply_e02_reconciliation", "peek_get_command_status", "peek_get_exception_status"), names);
+        assertEquals(2, writes);
         verifyNoInteractions(tools);
     }
 

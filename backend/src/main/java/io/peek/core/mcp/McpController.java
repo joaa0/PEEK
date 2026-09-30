@@ -30,7 +30,13 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(name = "peek.mcp.enabled", havingValue = "true")
 public class McpController {
     public static final String INSTRUCTIONS = "PEEK is the source of truth. Read exception evidence and operational context before acting. "
-        + "Only OPEN E01 permits INVENTORY_SYNC retry when retryAllowed is true. E02/E03/E04 are read-only. "
+        + "OPEN E01 permits safe INVENTORY_SYNC retry automatically when retryAllowed is true. E03/E04 are read-only. "
+        + "For OPEN E02, show FACTS / EVIDENCE separately from JEV INTERPRETATION, including expected_stock, physical_stock, "
+        + "delta, tolerance, evidence, hypotheses, model confidence and the concrete recommended checkpoint action. "
+        + "Ask the human explicitly and wait for an affirmative reply before peek_apply_e02_reconciliation. "
+        + "Silence, ambiguity, questions or refusal do not approve any mutation. Never infer human approval. "
+        + "Human approval authorizes an attempt, not resolution. Only PEEK deterministic reconciliation may report VERIFIED. "
+        + "Treat JEV conclusions as hypotheses, not source facts. If JEV is unavailable use factual evidence and static recommendation. "
         + "Reuse idempotencyKey for the same logical action. After retry poll command and exception status. "
         + "Acceptance is not resolution: report VERIFIED only with PEEK reconciliation proof; otherwise PENDING_VERIFICATION or FAILED. "
         + "Use only the exposed tools. Never resolve exceptions or fabricate confirmation events. "
@@ -120,6 +126,9 @@ public class McpController {
                 case "peek_get_exception" -> tools.getException(uuid(args, "exceptionId"));
                 case "peek_get_operational_context" -> tools.operationalContext(uuid(args, "exceptionId"));
                 case "peek_retry_inventory_sync" -> tools.retryInventory(uuid(args, "commandId"), args.get("idempotencyKey").asText());
+                case "peek_apply_e02_reconciliation" -> tools.applyE02(uuid(args, "exceptionId"),
+                    args.get("idempotencyKey").asText(), args.get("humanApproved").asBoolean(),
+                    args.get("approvalNote").asText(), args.get("decisionFingerprint").asText());
                 case "peek_get_command_status" -> tools.commandStatus(uuid(args, "commandId"));
                 case "peek_get_exception_status" -> tools.exceptionStatus(uuid(args, "exceptionId"));
                 default -> throw new IllegalArgumentException("Unknown tool");

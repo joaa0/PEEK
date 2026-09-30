@@ -21,9 +21,11 @@ It acts as a complementary operational layer that:
 Before implementing domain behavior, read the relevant files under `docs/`.
 
 The local external Codex agent contract is in `docs/mcp_agent.md`. Reuse
-CommandService.retry and the existing adapters/attempts. Only E01 inventory
-retry is writable through MCP; never expose exception resolution or fabricated
-confirmation. PEEK's deterministic reconciliation supplies final verification.
+CommandService.retry and the existing adapters/attempts for E01. E02 may accept
+an existing confirmed physical checkpoint ONLY after Codex presents facts and
+JEV hypotheses separately and receives explicit human approval. Never infer
+human approval. E03/E04 remain read-only. Never expose exception resolution or
+fabricated confirmation; PEEK deterministic reconciliation supplies final verification.
 
 ---
 
