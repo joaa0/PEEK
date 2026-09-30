@@ -186,3 +186,76 @@ closed semantic tool contract are documented in [mcp_agent.md](mcp_agent.md).
 Error responses have `code`, `message`, and `timestamp`. The codes are
 `INVALID_INPUT`, `MALFORMED_JSON`, `MISSING_HEADER`, `UNSUPPORTED_EVENT_TYPE`,
 `UNSUPPORTED_EXTERNAL_PAYLOAD`, `NOT_FOUND`, and `CONFLICT`.
+
+## Integrated investigation context
+
+`GET /api/v1/exceptions/{id}/context` returns the persisted `exception`, its
+canonical `trigger`, a read-only `order` derived only from SALE_CONFIRMED (or
+null), `stockAtDetection`, `currentStock`, `systemSnapshot` and
+`physicalCheckpoint`. The stock reconstruction uses events up to the detection
+instant. E02 reconstructs the expected balance immediately BEFORE its triggering
+confirmed count, then shows that count as the observed physical balance. The
+current snapshot includes its checkpoint and subsequent movements. Persisted
+exception evidence remains the original detection record; later observations
+and retries do not overwrite it. The frontend resolves an external product
+identity through the existing mapping endpoint, keeping absent/inactive
+mappings explicit.
+
+## Product registration propagation
+
+`POST /api/v1/products/{id}/propagations` accepts:
+
+```json
+{"idempotencyKey":"product-operation-1","productVersion":0,"targets":[{"channel":"ERP","simulateFailure":false},{"channel":"MERCADO_LIVRE","simulateFailure":false},{"channel":"SHOPEE","simulateFailure":true}]}
+```
+
+Supported simulated destinations are ERP, MERCADO_LIVRE and SHOPEE. At least
+one unique destination is required. The service persists a separate command
+and immutable product snapshot/version for each target; it creates a PENDING
+mapping when absent, dispatches through the simulated destination adapter and
+records each result. A success returns a stable external ID and activates the
+mapping; failure keeps a normalized error code/message and a FAILED command.
+CREATE/UPDATE is selected from the existing mapping identity. Responses are
+200 arrays with command/product/mapping IDs, channel, operation, version,
+request/completion timestamps, status, external ID, attempts and evidence.
+
+The unique identity is `(channel, idempotencyKey)`. An identical replay does
+not dispatch again; reuse for another product/version/failure choice returns
+409. Product-level locking serializes dispatches and retries; target results
+can differ within one operation. The simulated external effect is a durable
+`mock_destination_product` row unique by product/destination, rather than a
+second create per retry. No stock/fiscal event is fabricated by registration.
+
+`GET /api/v1/products/{id}/propagations` lists history.
+`GET /api/v1/product-propagations/{id}` reads one command.
+`POST /api/v1/product-propagations/{id}/retry` accepts
+`{"idempotencyKey":"product-retry-1","simulateFailure":false}`. Only FAILED
+commands are eligible. Replaying the same attempt key does not append or
+redispatch; conflicting reuse returns 409. A changed product version requires
+a new propagation, avoiding an old snapshot overwriting the updated product.
+Inactive mappings are rejected explicitly.
+
+Propagation evidence uses `ExceptionService.EvidenceView` and the same UI
+investigation timeline as E01–E04, linking the canonical product, command,
+version, destination and immutable results. Failure is investigated on the
+product view; it does not create a new exception family or bypass the event
+pipeline. Future exception attachment must use the existing evidence/lifecycle
+contracts. V5 adds propagation commands, attempts and simulated destination
+records; existing canonical event types and deterministic rules are unchanged.
+
+## Demo clock and reset
+
+With `--spring.profiles.active=demo`, reset is enabled at
+`POST /api/v1/demo/reset` with `{"runId":"QA-EXAMPLE-123456","confirmation":"RESET_DEMO"}`.
+Only category Demo products with exact SKUs `CAM-<runId>`, `SKU-E02-<runId>` and
+`SKU-E04-<runId>` are owned by that run. Linked exceptions/evidence, events,
+stock/fiscal attempts/commands and associated agent_action_execution audit, product propagation attempts/commands,
+simulated destination effects, mappings and audit records are removed in one
+transaction. Unrelated products/configuration are preserved. A repeated reset
+returns zero `totalDeleted`. The response includes per-table deletion counts.
+Outside demo, the reset route is unavailable.
+
+The optional `--peek.demo.clock=2026-01-01T12:00:00Z` freezes backend time only
+under the demo profile. Production/default uses the normal UTC clock. Browser
+fixtures use this clock and explicit evaluation instants; see
+`frontend_validation.md` for the ordered execution commands.

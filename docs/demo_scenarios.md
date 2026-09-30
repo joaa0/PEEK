@@ -443,3 +443,14 @@ Expected sequence:
 
 This scenario demonstrates centralized registration and controlled outbound
 orchestration. It does not require real ERP, marketplace, or e-commerce APIs.
+
+## 11. Automated integrated reproduction
+
+`frontend/e2e/scenarios.ts` supplies source-shaped demo payloads through all
+four simulated source adapters, using fixed 2026-01-01 UTC instants.
+`frontend/e2e/operational.spec.ts` executes normal and violated E01–E04 flows,
+UI investigation/fallback, resolution and controlled retry, then resets and
+repeats. It also registers/edits/distributes a product to ERP, Mercado Livre
+and Shopee, preserving a failed Shopee attempt after retry succeeds.
+`docs/frontend_validation.md` contains the setup order, executed results and
+screenshots. This route to verification does not require Postman.

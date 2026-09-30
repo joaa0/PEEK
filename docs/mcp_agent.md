@@ -213,5 +213,7 @@ documentadas no README. Os testes novos cobrem o protocolo/allowlist,
 autenticação e Origin, reutilização dos serviços, E01/E03, duplicatas e
 concorrência, auditoria, Attempt/adapter existentes, ausência de confirmação,
 saldo/correlação incorretos, resolução manual e confirmação + reconciliação.
-E02/E04 não possuem ferramentas de escrita. O frontend permanece o mock
-existente, sem console/chat de agente.
+E02/E04 não possuem ferramentas de escrita no MCP. O frontend integrado
+usa a API REST para ações explícitas do operador, sem console/chat de agente.
+Resolução manual na UI não representa VERIFIED; a prova de reconciliação
+continua sendo produzida pelo motor.

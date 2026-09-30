@@ -585,3 +585,20 @@ Confirmation enters through the existing adapters/EventService, and the
 EvaluationService independently verifies recovery. A local scheduler invokes
 that engine; no MCP tool can invoke resolution or inject confirmation.
 REST and MCP share OperationalContextService. See [mcp_agent.md](mcp_agent.md).
+
+## Implemented frontend and product propagation boundary
+
+The Next.js shell now uses a typed client through a server-side `/api/v1/*`
+proxy to Spring Boot. Fixtures are opt-in and read-only on a separate local
+HTTP server. The primary screen is the exception list. Product, order and the
+three stock perspectives are composed within investigation; product management
+and outbound command results remain in the minimal product view.
+
+Product propagation uses its own persisted command and immutable attempt
+history alongside stock/fiscal orchestration. A ProductDestinationAdapter
+normalizes simulated per-target outcomes; a unique destination record ensures
+repeated create/update does not duplicate the external effect. Success updates
+the existing ProductChannelMapping audit path. Failed attempts expose the
+existing EvidenceView shape and shared investigation timeline, without
+fabricating source events or introducing E05. Contract details are in
+`backend_api.md`; executable acceptance evidence is in `frontend_validation.md`.
