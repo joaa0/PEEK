@@ -90,8 +90,19 @@ a {
   font-weight: 800;
   letter-spacing: -1px;
 }
-.brand-dot {
-  color: #f45fae;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand img {
+  object-fit: contain;
+}
+.nav-item {
+  text-decoration: none;
+}
+.nav-item svg {
+  flex: none;
 }
 .sidebar-top {
   padding: 0 12px 36px;
@@ -524,8 +535,9 @@ input[readonly] {
     padding: 0 8px;
   }
   .sidebar nav {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
   }
   .sidebar-bottom,
   .nav-label {
@@ -579,4 +591,60 @@ input[readonly] {
   .api-dialog {
     padding: 20px;
   }
+}
+
+.fiscal-notice {
+  padding: 16px 20px;
+  border-left: 3px solid var(--pink);
+  background: #fff5fa;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+.fiscal-notice p {
+  margin: 6px 0 0;
+}
+.fiscal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.fiscal-status.pending {
+  color: #805211;
+  background: #fff7e5;
+  border-color: #e2c68d;
+}
+.fiscal-status.confirmed {
+  color: #106647;
+  background: #eaf8f1;
+  border-color: #9bcbb7;
+}
+.fiscal-status.failed {
+  color: #a4233d;
+  background: #ffedf1;
+  border-color: #e7a9b6;
+}
+.fiscal-status.timeout {
+  color: #5d4094;
+  background: #f1ebfb;
+  border-color: #bca6df;
+}
+.fiscal-table {
+  min-width: 1000px;
+}
+.fiscal-table details {
+  min-width: 110px;
+}
+.fiscal-table summary {
+  cursor: pointer;
+  color: #4c397c;
+}
+.fiscal-table td {
+  overflow-wrap: anywhere;
+  max-width: 260px;
 }

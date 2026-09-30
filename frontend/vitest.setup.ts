@@ -4,6 +4,6 @@ import { afterEach, beforeEach, vi } from "vitest";
 beforeEach(() => {
   window.scrollTo = vi.fn();
   localStorage.clear();
-  window.history.replaceState(null, "", "/dashboard");
+  window.history.replaceState(null, "", "/exceptions");
 });
 afterEach(() => cleanup());

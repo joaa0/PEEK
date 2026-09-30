@@ -1,9 +1,11 @@
-# PEEKio frontend
+# PEEK frontend
 
 Next.js/TypeScript/Tailwind connected to the Spring Boot API. The primary route
 is `/exceptions`; `/products` manages minimal canonical identity, mappings and
-operational context. Investigation contains stock and order context; there are
-no separate order/inventory management pages.
+operational context. The shell also links to `/overview`, `/inventory`, `/fiscal`
+and `/simulation`. Overview, inventory and simulation currently show explicit
+preparation screens; their functional implementations belong to #53, #54 and #56.
+`/` opens the overview shell. Investigation remains `/exceptions/:id`.
 
 ## Development
 
@@ -81,3 +83,32 @@ The current backend returns static recommendations. The optional JEV rendering
 contract is isolated in `contracts.ts`; a future backend enrichment must use
 that contract or deliberately update it. This delivery validates the static
 fallback and does not implement or claim a live LLM integration.
+
+## Fiscal mock and shell (#52 / #55)
+
+`/fiscal` is read-only. Four fixed, labelled examples show pending, confirmed,
+failed and timed-out commands, with distinct labels, icons and colors. Examples
+include attempt history, deadlines, received confirmation time and the external
+document occurrence time. They do not create commands or link invented IDs.
+
+The separate demo section reads E03 exceptions through the existing API and
+fetches their linked fiscal commands. Both open and resolved exceptions are
+included; an exception lifecycle never determines a command's fiscal status.
+Missing commands and command-level errors preserve the real investigation link.
+This section is scoped to E03 exceptions, not a complete fiscal command ledger.
+No issuance, SEFAZ integration, tax rules or fiscal mutations are added.
+
+The sidebar uses the official pink symbol with its background removed, alongside
+PEEK. Routes have one active link, including product/investigation detail routes;
+browser history updates that active state. Mobile navigation wraps into two
+columns and wide fiscal tables scroll within their cards.
+
+Run the isolated frontend browser tests without PostgreSQL:
+
+```sh
+npx playwright test e2e/shell-fiscal.spec.ts
+```
+
+These three tests intercept HTTP with explicit fixtures. They supplement the
+existing real Spring Boot/PostgreSQL scenarios in `e2e/operational.spec.ts`; they
+do not claim backend integration coverage. Build and browser runs are sequential.
