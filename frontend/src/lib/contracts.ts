@@ -46,6 +46,39 @@ export interface JevAnalysis {
   recommendedAction: string;
   alternatives: string[];
 }
+export interface JevHypothesis {
+  code:
+    | "COUNT_REQUIRES_VERIFICATION"
+    | "MOVEMENT_RECORDING_GAP"
+    | "RECEIPT_RECORDING_GAP"
+    | "ADJUSTMENT_REQUIRES_REVIEW"
+    | "UNEXPLAINED_DIVERGENCE";
+  statement: string;
+  rationale: string;
+  confidence: {
+    value: number;
+    meaning: "MODEL_SELF_REPORTED_RANKING" | "TYPESAFE_CHOICE_PROBABILITY";
+  };
+  evidenceIds: string[];
+}
+export interface JevInterpretation {
+  contractVersion: "1.0";
+  status: "AVAILABLE" | "FALLBACK";
+  nature: "HYPOTHESIS_NOT_FACT" | "NO_MODEL_ANALYSIS";
+  summary: string;
+  mainHypothesis: JevHypothesis | null;
+  alternatives: JevHypothesis[];
+  impact: string | null;
+  recommendedAction: string;
+  fallbackReason: string | null;
+  evaluation?: {
+    provider: "TYPESAFE";
+    model: string;
+    confidence: number;
+    probabilities: Partial<Record<JevHypothesis["code"], number>>;
+    explanationSource: "PEEK_EVIDENCE_TEMPLATES";
+  };
+}
 export interface Alert {
   id: string;
   code: ExceptionCode;
@@ -181,6 +214,7 @@ export interface Investigation {
   currentStock: Stock;
   systemSnapshot: CanonicalEvent | null;
   physicalCheckpoint: CanonicalEvent | null;
+  jev?: JevInterpretation | null;
 }
 export type Destination = "ERP" | "MERCADO_LIVRE" | "SHOPEE";
 export interface Propagation {

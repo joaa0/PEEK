@@ -454,3 +454,12 @@ repeats. It also registers/edits/distributes a product to ERP, Mercado Livre
 and Shopee, preserving a failed Shopee attempt after retry succeeds.
 `docs/frontend_validation.md` contains the setup order, executed results and
 screenshots. This route to verification does not require Postman.
+
+For the joint JEV + external Agent E02 demonstration, use the operator driver
+`node scripts/mcp-e02-demo.mjs prepare --require-jev` with `demo,mcp` profiles.
+It creates a resettable fictitious product and adapter events, checks the
+interpretation through both REST and MCP, then prints a Codex investigation
+prompt. Approval is a separate human decision in that occurrence; only the
+PEEK engine can provide VERIFIED. Setup and fallback are in
+[mcp_agent.md](mcp_agent.md); the local validation record is in
+[jev_agent_validation.md](jev_agent_validation.md).

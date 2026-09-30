@@ -348,6 +348,23 @@ It should be possible to inspect why an exception exists.
 
 JEV/AI is optional for deterministic detection and useful for ambiguous interpretation.
 
+The implemented v1.0 contract is defined in [jev_contract.md](jev_contract.md)
+and executable JSON Schemas under backend resources. The intelligence module
+owns the allowlisted projection, response validation, provider-neutral LlmClient
+SPI, configurable HTTP adapter, and deterministic fallback. E02 enrichment is
+performed when its investigation is queried, after the reconstruction transaction
+completes. Ingestion, EvaluationService, StockCalculator and checkpoint verification
+never call an LLM. No schema migration or event/status mutation is introduced.
+
+The selected adapter calls TypeSafe System One with state and a typed choice
+question. Jev evaluates grounded investigation hypotheses; PEEK supplies the
+evidence-linked prose. Probability distributions, actual model version and the
+source of the explanations are exposed separately from factual evidence.
+Only explicitly opted-in, fictitious demo data may reach the external adapter.
+The default and any non-demo context use the static recommendation. Facts and
+calculations remain in the original exception context; generated hypotheses are
+returned separately as `jev` and mapped to the existing MCP read projection.
+
 Input should be structured.
 
 Example:
@@ -364,7 +381,9 @@ Example:
 }
 ```
 
-AI may return:
+The conceptual fields below are superseded by the versioned schema's
+`mainHypothesis`, evidence-linked rationale, model confidence and up to two
+context-supported ranked alternatives:
 
 ```text
 {

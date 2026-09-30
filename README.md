@@ -79,6 +79,15 @@ The Spring Boot backend is available under `backend/`; the integrated Next.js fr
 - AI: external LLM API behind the backend intelligence module, with a
   deterministic fallback when unavailable.
 
+## JEV / AI interpretation
+
+E02 remains deterministic. Its investigation optionally uses the versioned
+structured interpretation contract and configurable external LLM adapter, with
+static fallback for disabled, failed, timed-out or invalid responses. See
+[docs/jev_contract.md](docs/jev_contract.md) for schemas, environment setup,
+fictitious-demo restrictions and the frontend/MCP projections. No provider,
+model or API credential is hard-coded. External calls are disabled by default.
+
 ## Backend development
 
 Prerequisites: JDK 21 or newer (the Maven compiler emits Java 21 bytecode),
@@ -161,3 +170,14 @@ configuration, restricted E01 retry policy, agent audit and reproducible demo.
 The server is disabled by default. Start with
 `mvn spring-boot:run -Dspring-boot.run.profiles=mcp` from `backend/` after setting
 `PEEK_MCP_TOKEN`. Only the PEEK reconciliation engine can verify recovery.
+
+For the combined JEV + Agent demo, start with
+`-Dspring-boot.run.profiles=demo,mcp` and configure the backend `PEEK_LLM_*`
+environment variables. `node scripts/mcp-e02-demo.mjs prepare --require-jev`
+creates fictitious adapter fixtures and checks AVAILABLE through both MCP and
+REST before presenting the human-approval prompt. A failure remains visible
+with its fallback reason and never approves or resolves an exception.
+The Codex MCP example includes the guarded E02 tool. Run its regression checks
+with `node --test scripts/mcp-e02-demo.test.mjs` from the repository root.
+The latest local checks and provider configuration limits are recorded in
+[docs/jev_agent_validation.md](docs/jev_agent_validation.md).

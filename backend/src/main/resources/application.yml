@@ -13,6 +13,15 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+peek:
+  llm:
+    enabled: ${PEEK_LLM_ENABLED:false}
+    synthetic-demo: ${PEEK_LLM_SYNTHETIC_DEMO:false}
+    endpoint: ${PEEK_LLM_ENDPOINT:}
+    model: ${PEEK_LLM_MODEL:}
+    api-key: ${PEEK_LLM_API_KEY:}
+    timeout: ${PEEK_LLM_TIMEOUT:3s}
+    connect-timeout: ${PEEK_LLM_CONNECT_TIMEOUT:1s}
 management:
   endpoints:
     web:

@@ -63,6 +63,8 @@ replays source-shaped adapter fixtures, evaluates fixed instants and resets
 its own demo namespace. Default backend/frontend URLs can be changed using
 `PEEK_BACKEND_URL` / `PEEK_FRONTEND_URL` for the test client; set `PEEK_API_URL`
 consistently for the Next.js proxy. Run build and browser tests sequentially.
+For `npm run start`, set `PEEK_API_URL` before `npm run build` as well: the
+production rewrite destination is recorded during the build.
 
 ## Actions and contracts
 
@@ -77,7 +79,10 @@ Destination commands keep independent status, returned external identity,
 failure evidence and immutable attempts. Evidence uses the same timeline
 component as exception investigation; propagation failure does not invent E05.
 
-The current backend returns static recommendations. The optional JEV rendering
-contract is isolated in `contracts.ts`; a future backend enrichment must use
-that contract or deliberately update it. This delivery validates the static
-fallback and does not implement or claim a live LLM integration.
+The backend returns the static recommendation and an optional top-level `jev`
+interpretation on E02 investigation. The versioned contract in `contracts.ts`
+renders the main hypothesis, evidence-linked rationale, TypeSafe hypothesis probability, returned Jev model and the PEEK explanation source
+and at most two grounded alternatives. FALLBACK preserves the deterministic
+conclusion and never invents confidence. The legacy optional flat projection
+remains supported. No frontend request goes to a model; backend opt-in and
+synthetic-data restrictions are documented in `docs/jev_contract.md`.

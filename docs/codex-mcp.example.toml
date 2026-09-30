@@ -10,6 +10,7 @@ enabled_tools = [
   "peek_get_exception",
   "peek_get_operational_context",
   "peek_retry_inventory_sync",
+  "peek_apply_e02_reconciliation",
   "peek_get_command_status",
   "peek_get_exception_status",
 ]

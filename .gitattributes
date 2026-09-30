@@ -1,0 +1,2 @@
+# Keep text consistent with .editorconfig and Prettier on every host.
+* text=auto eol=lf

@@ -222,6 +222,7 @@ export default function Investigation({
   const request = useApi(id, () => api.investigation(id));
   const data = request.data;
   const alert = data?.exception;
+  const analysis = data?.jev;
   return (
     <>
       <button className="text-link" onClick={() => navigate("/exceptions")}>
@@ -281,7 +282,62 @@ export default function Investigation({
           )}
           <Card title="Recomendação">
             <p>{alert.recommendation}</p>
-            {alert.jev && alert.evidence.length > 0 ? (
+            {analysis?.status === "AVAILABLE" && analysis.mainHypothesis ? (
+              <section className="jev-hypothesis">
+                <h3>JEV · hipótese, não fato</h3>
+                <p>{analysis.summary}</p>
+                <p>Hipótese principal: {analysis.mainHypothesis.statement}</p>
+                <p>Justificativa: {analysis.mainHypothesis.rationale}</p>
+                {analysis.mainHypothesis.confidence.meaning ===
+                "TYPESAFE_CHOICE_PROBABILITY" ? (
+                  <p>
+                    Probabilidade atribuída pelo Jev à hipótese:{" "}
+                    {analysis.mainHypothesis.confidence.value}. O valor compara
+                    as opções avaliadas e não comprova a causa.
+                  </p>
+                ) : (
+                  <p>
+                    Confiança informada pelo modelo:{" "}
+                    {analysis.mainHypothesis.confidence.value}. Não é
+                    probabilidade calibrada.
+                  </p>
+                )}
+                {analysis.evaluation && (
+                  <p>
+                    Modelo TypeSafe: {analysis.evaluation.model}. Explicação e
+                    recomendação construídas pelo PEEK a partir das evidências.
+                  </p>
+                )}
+                <p>Impacto sugerido: {analysis.impact}</p>
+                <p>Ação sugerida: {analysis.recommendedAction}</p>
+                <p>
+                  Evidências citadas:{" "}
+                  {analysis.mainHypothesis.evidenceIds
+                    .filter((e) => alert.evidence.some((item) => item.id === e))
+                    .join(", ") || "Sem referências válidas"}
+                </p>
+                {analysis.alternatives.length > 0 && (
+                  <ul>
+                    {analysis.alternatives.map((alternative) => (
+                      <li key={alternative.code}>
+                        Hipótese alternativa: {alternative.statement} ·{" "}
+                        {alternative.rationale} ·{" "}
+                        {alternative.confidence.meaning ===
+                        "TYPESAFE_CHOICE_PROBABILITY"
+                          ? "Probabilidade atribuída pelo Jev: "
+                          : "Ranking do modelo: "}
+                        {alternative.confidence.value} · Evidências:{" "}
+                        {alternative.evidenceIds
+                          .filter((e) =>
+                            alert.evidence.some((item) => item.id === e),
+                          )
+                          .join(", ")}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            ) : alert.jev && alert.evidence.length > 0 ? (
               <section className="jev-hypothesis">
                 <h3>JEV · hipótese, não fato</h3>
                 <p>{alert.jev.summary}</p>
@@ -305,10 +361,13 @@ export default function Investigation({
                 </ul>
               </section>
             ) : (
-              <p>
-                JEV indisponível. A recomendação estática e as evidências
-                continuam disponíveis.
-              </p>
+              <>
+                <p>
+                  JEV indisponível. A recomendação estática e as evidências
+                  continuam disponíveis.
+                </p>
+                {analysis?.status === "FALLBACK" && <p>{analysis.summary}</p>}
+              </>
             )}
           </Card>
           <ResolveAlert alert={alert} onComplete={request.reload} />

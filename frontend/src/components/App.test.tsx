@@ -117,6 +117,116 @@ describe("API-backed investigation", () => {
     expect(screen.getByText("Sem contagem confirmada")).toBeVisible();
     expect(screen.getByText(/nenhum SALE_CONFIRMED/)).toBeVisible();
   });
+  it("renders the versioned backend JEV contract directly with evidence and model ranking", async () => {
+    location("/exceptions/alert-1");
+    const data = investigation("E02");
+    data.jev = {
+      contractVersion: "1.0",
+      status: "AVAILABLE",
+      nature: "HYPOTHESIS_NOT_FACT",
+      summary: "A causa requer conferência contextual.",
+      mainHypothesis: {
+        code: "COUNT_REQUIRES_VERIFICATION",
+        statement: "A contagem requer revisão.",
+        rationale:
+          "A contagem e o delta sustentam a investigação, não provam a causa.",
+        confidence: { value: 0.6, meaning: "MODEL_SELF_REPORTED_RANKING" },
+        evidenceIds: ["evidence-1"],
+      },
+      alternatives: [],
+      impact: "Saldo pode estar superestimado.",
+      recommendedAction: "Recontar antes de ajustar.",
+      fallbackReason: null,
+    };
+    const request = vi.spyOn(api, "investigation").mockResolvedValue(data);
+    vi.spyOn(api, "resolveProduct").mockResolvedValue(product);
+    render(<App />);
+    expect(await screen.findByText("JEV · hipótese, não fato")).toBeVisible();
+    expect(
+      screen.getByText(/Hipótese principal: A contagem requer revisão/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Justificativa: A contagem e o delta/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Confiança informada pelo modelo: 0.6/),
+    ).toHaveTextContent("Não é probabilidade calibrada.");
+    expect(screen.getByText("Evidências citadas: evidence-1")).toBeVisible();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Venda confirmada")).toBeVisible();
+  });
+  it("shows TypeSafe probabilities and the PEEK explanation source without treating either as proof", async () => {
+    location("/exceptions/alert-1");
+    const data = investigation("E02");
+    data.jev = {
+      contractVersion: "1.0",
+      status: "AVAILABLE",
+      nature: "HYPOTHESIS_NOT_FACT",
+      summary: "Jev priorizou uma hipótese de investigação.",
+      mainHypothesis: {
+        code: "UNEXPLAINED_DIVERGENCE",
+        statement: "A causa permanece indeterminada.",
+        rationale: "Esperado 95 e físico 93 não distinguem a causa.",
+        confidence: { value: 0.7, meaning: "TYPESAFE_CHOICE_PROBABILITY" },
+        evidenceIds: ["evidence-1"],
+      },
+      alternatives: [],
+      impact: "O saldo exige conferência.",
+      recommendedAction: "Recontar antes de agir.",
+      fallbackReason: null,
+      evaluation: {
+        provider: "TYPESAFE",
+        model: "jev-test",
+        confidence: 0.4,
+        probabilities: {
+          UNEXPLAINED_DIVERGENCE: 0.7,
+          COUNT_REQUIRES_VERIFICATION: 0.3,
+        },
+        explanationSource: "PEEK_EVIDENCE_TEMPLATES",
+      },
+    };
+    vi.spyOn(api, "investigation").mockResolvedValue(data);
+    vi.spyOn(api, "resolveProduct").mockResolvedValue(product);
+    render(<App />);
+    expect(
+      await screen.findByText(
+        /Probabilidade atribuída pelo Jev à hipótese: 0.7/,
+      ),
+    ).toHaveTextContent("não comprova a causa");
+    expect(screen.getByText(/Modelo TypeSafe: jev-test/)).toHaveTextContent(
+      "construídas pelo PEEK a partir das evidências",
+    );
+    expect(
+      screen.queryByText(/Confiança informada pelo modelo/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Venda confirmada")).toBeVisible();
+  });
+  it("renders structured fallback without model confidence while keeping the alert actionable", async () => {
+    location("/exceptions/alert-1");
+    const data = investigation("E02");
+    data.jev = {
+      contractVersion: "1.0",
+      status: "FALLBACK",
+      nature: "NO_MODEL_ANALYSIS",
+      summary: "Contagem 93, esperado 95. A causa requer investigação.",
+      mainHypothesis: null,
+      alternatives: [],
+      impact: null,
+      recommendedAction: data.exception.recommendation,
+      fallbackReason: "TIMEOUT",
+    };
+    vi.spyOn(api, "investigation").mockResolvedValue(data);
+    vi.spyOn(api, "resolveProduct").mockResolvedValue(product);
+    render(<App />);
+    expect(await screen.findByText(/JEV indisponível/)).toBeVisible();
+    expect(screen.getByText(data.jev.summary)).toBeVisible();
+    expect(
+      screen.queryByText(/Confiança informada pelo modelo/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Resolver alerta" }),
+    ).toBeEnabled();
+  });
   it("resolves canonical product through external identity and keeps missing mapping explicit", async () => {
     location("/exceptions/alert-1");
     vi.spyOn(api, "investigation").mockResolvedValue(investigation());

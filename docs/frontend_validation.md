@@ -81,7 +81,22 @@ intelligence enrichment are separate backend work; this delivery uses the
 required deterministic fallback. No live ERP, marketplace or fiscal service
 is required. Postman was not executed; validation used Maven and Playwright.
 
-## Screenshots
+## JEV + Agent follow-up — 2026-09-30
+
+The joint follow-up passed the full frontend formatting gate, TypeScript,
+15 Vitest tests, one fixture API test, the Next.js build and all three browser
+scenarios. Backend verification passed 52 unit and 63 integration tests.
+An additional Chromium smoke displayed an AVAILABLE JEV interpretation from
+an HTTP mock on the actual E02 investigation, preserving the open exception
+and separate facts/evidence. The external Codex client also completed three
+read-only MCP queries against that fictitious occurrence.
+
+The exact scope, seven driver regressions, provider configuration limits and
+client results are in [jev_agent_validation.md](jev_agent_validation.md).
+Set `PEEK_API_URL` before building a production frontend as well as starting
+it; Next.js records the rewrite destination during the build.
+
+## Screenshots (initial validation)
 
 ![E02 investigation](evidence/investigation-e02.png)
 ![Product distribution and preserved retry](evidence/product-propagation.png)
