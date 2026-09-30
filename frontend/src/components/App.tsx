@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import Alerts from "./Alerts";
 import Fiscal from "./Fiscal";
+import Overview from "./Overview";
+import Inventory from "./Inventory";
+import Simulation from "./Simulation";
 import Investigation from "./Investigation";
 import Products, { ProductDetail } from "./Products";
 import { Card } from "./operational-ui";
@@ -23,29 +26,11 @@ const navigation = [
   { path: "/simulation", label: "Simulação", icon: FlaskConical },
 ] as const;
 
-function PendingScreen({ label }: { label: string }) {
-  return (
-    <>
-      <header className="page-intro">
-        <div>
-          <div className="eyebrow">Operação conectada</div>
-          <h1>{label}</h1>
-        </div>
-      </header>
-      <Card title="Em preparação">
-        <p>
-          Esta área terá uma tela própria em uma próxima etapa. Use Produtos e
-          Central de exceções para consultar o estado operacional disponível.
-        </p>
-      </Card>
-    </>
-  );
-}
-
 export default function App() {
   const [path, setPath] = useState<string | null>(null);
   useEffect(() => {
-    const update = () => setPath(window.location.pathname);
+    const update = () =>
+      setPath(window.location.pathname + window.location.search);
     update();
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
@@ -67,7 +52,7 @@ export default function App() {
     event.preventDefault();
     navigate(next);
   }
-  const segments = path?.split("/").filter(Boolean) ?? [];
+  const segments = path?.split("?")[0].split("/").filter(Boolean) ?? [];
   const route =
     path === null ? null : segments[0] ? "/" + segments[0] : "/overview";
   const current = navigation.find((item) => item.path === route);
@@ -153,11 +138,15 @@ export default function App() {
           ) : route === "/products" ? (
             <Products navigate={navigate} />
           ) : route === "/exceptions" ? (
-            <Alerts navigate={navigate} />
+            <Alerts key={path} navigate={navigate} />
           ) : route === "/fiscal" ? (
             <Fiscal navigate={navigate} />
-          ) : current ? (
-            <PendingScreen label={current.label} />
+          ) : route === "/overview" ? (
+            <Overview navigate={navigate} />
+          ) : route === "/inventory" ? (
+            <Inventory navigate={navigate} />
+          ) : route === "/simulation" ? (
+            <Simulation navigate={navigate} />
           ) : (
             <Card title="Página não encontrada">
               <a

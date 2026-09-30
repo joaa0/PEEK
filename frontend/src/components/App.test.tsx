@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { api, ApiError } from "../lib/api";
 import {
@@ -16,6 +16,7 @@ import { OrderContext, StockComparison } from "./operational-ui";
 function location(path: string) {
   window.history.replaceState(null, "", path);
 }
+beforeEach(() => location("/exceptions"));
 afterEach(() => vi.restoreAllMocks());
 describe("API-backed investigation", () => {
   it("uses API filters, preserves returned order and displays open and resolved alerts", async () => {

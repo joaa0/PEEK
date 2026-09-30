@@ -1,5 +1,17 @@
 export type ExceptionCode = "E01" | "E02" | "E03" | "E04";
 export type ExceptionStatus = "OPEN" | "RESOLVED";
+export type DemoScenario = "Normal" | ExceptionCode;
+export interface DemoReset {
+  runId: string;
+  totalDeleted: number;
+}
+export interface Evaluation {
+  asOf: string;
+  created: number;
+  alreadyPresent: number;
+  exceptionIds: string[];
+  issues: { triggerEventId: string; code: string; field: string }[];
+}
 export type MappingStatus = "PENDING" | "ACTIVE" | "INACTIVE";
 export interface ProductInput {
   sku: string;

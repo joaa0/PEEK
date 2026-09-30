@@ -11,7 +11,13 @@ export default function Alerts({
   navigate: (path: string) => void;
 }) {
   const [status, setStatus] = useState<ExceptionStatus | "">("OPEN");
-  const [code, setCode] = useState<ExceptionCode | "">("");
+  const [code, setCode] = useState<ExceptionCode | "">(() => {
+    if (typeof window === "undefined") return "";
+    const value = new URLSearchParams(window.location.search).get("code");
+    return ["E01", "E02", "E03", "E04"].includes(value ?? "")
+      ? (value as ExceptionCode)
+      : "";
+  });
   const request = useApi(status + code, () =>
     api.alerts(status || undefined, code || undefined),
   );

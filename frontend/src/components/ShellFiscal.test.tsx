@@ -48,7 +48,10 @@ describe("PEEK shell", () => {
       expect(link).toHaveAttribute("aria-current", "page");
       expect(nav.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
       expect(
-        await screen.findByRole("heading", { name: label, level: 1 }),
+        await screen.findByRole("heading", {
+          name: label === "Simulação" ? "Simulação do MVP" : label,
+          level: 1,
+        }),
       ).toBeVisible();
     }
   });
@@ -56,6 +59,7 @@ describe("PEEK shell", () => {
     at("/exceptions/alert-1");
     vi.spyOn(api, "investigation").mockResolvedValue(investigation());
     vi.spyOn(api, "resolveProduct").mockResolvedValue(product);
+    vi.spyOn(api, "products").mockResolvedValue([]);
     render(<App />);
     expect(
       await screen.findByRole("heading", { name: alert.title }),

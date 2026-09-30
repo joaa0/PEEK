@@ -1,11 +1,14 @@
 # PEEK frontend
 
-Next.js/TypeScript/Tailwind connected to the Spring Boot API. The primary route
-is `/exceptions`; `/products` manages minimal canonical identity, mappings and
-operational context. The shell also links to `/overview`, `/inventory`, `/fiscal`
-and `/simulation`. Overview, inventory and simulation currently show explicit
-preparation screens; their functional implementations belong to #53, #54 and #56.
-`/` opens the overview shell. Investigation remains `/exceptions/:id`.
+Next.js/TypeScript/Tailwind connected to the Spring Boot API. The home route is `/overview`, with operational cards from the API.
+`/exceptions` lists and investigates exceptions; `/products` manages minimal
+canonical identity and mappings; `/inventory` compares expected, system and
+physical stock with links to products and open inventory exceptions.
+`/simulation` executes Normal/E01/E02/E03/E04 through the existing adapters,
+commands, evaluation and demo reset endpoints.
+
+`/fiscal` shows read-only fiscal examples and real E03 commands. The six-route
+shell uses PEEK branding and supports browser history and direct detail routes.
 
 ## Development
 
@@ -60,8 +63,7 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 ```
 
-Playwright starts Next.js, uses the real backend (not browser request mocks),
-replays source-shaped adapter fixtures, evaluates fixed instants and resets
+The operational Playwright tests start Next.js, use the real backend, and replay source-shaped adapter fixtures, evaluates fixed instants and resets
 its own demo namespace. Default backend/frontend URLs can be changed using
 `PEEK_BACKEND_URL` / `PEEK_FRONTEND_URL` for the test client; set `PEEK_API_URL`
 consistently for the Next.js proxy. Run build and browser tests sequentially.
@@ -116,3 +118,16 @@ npx playwright test e2e/shell-fiscal.spec.ts
 These three tests intercept HTTP with explicit fixtures. They supplement the
 existing real Spring Boot/PostgreSQL scenarios in `e2e/operational.spec.ts`; they
 do not claim backend integration coverage. Build and browser runs are sequential.
+
+## Demo simulator
+
+Start Spring Boot with `--spring.profiles.active=demo` against an isolated demo
+database. `/simulation` keeps one `DEMO-*` run ID in sessionStorage per browser
+tab; each execution resets only that namespace and creates a fresh canonical
+product. It uses the backend product creation timestamp for scenario time,
+supporting both the system and fixed demo clocks, and evaluates beyond actual
+command deadlines without waiting. The existing evaluation endpoint evaluates
+the entire database, so use a dedicated demo database. Errors may leave partial
+session data; the same reset removes it. The read-only fixture server cannot
+execute scenarios. E02 success here means detection, not checkpoint acceptance
+or exception resolution. The Fiscal card opens the read-only `/fiscal` screen.

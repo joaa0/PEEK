@@ -54,7 +54,11 @@ test("six routes, active links, history and preserved product detail", async ({
     await nav.getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(path + "$"));
     await expect(
-      page.getByRole("heading", { name: label, exact: true, level: 1 }),
+      page.getByRole("heading", {
+        name: label === "Simulação" ? "Simulação do MVP" : label,
+        exact: true,
+        level: 1,
+      }),
     ).toBeVisible();
     await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(

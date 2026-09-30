@@ -648,3 +648,24 @@ input[readonly] {
   overflow-wrap: anywhere;
   max-width: 260px;
 }
+
+.summary-number {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 12px 0;
+}
+.inventory-divergent {
+  background: #fff3f2;
+}
+.demo-run {
+  display: block;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .sidebar nav {
+    flex-wrap: wrap;
+  }
+  .nav-item {
+    flex: 1 1 130px;
+  }
+}
