@@ -194,9 +194,11 @@ AI receives structured evidence and exception context rather than raw unbounded 
 
 ### TD-017 — Structured AI output
 
-**Status:** Recommended
+**Status:** Accepted / implemented by issue #16.
 
-Prefer validated structured output containing fields such as:
+The versioned contract in `jev_contract.md` replaces the initial conceptual
+field list below with one evidence-grounded main hypothesis, rationale,
+explicit model ranking and at most two context-supported alternatives:
 
 ```text
 explanation
@@ -301,15 +303,19 @@ run as local development processes until the team explicitly chooses otherwise.
 No message broker, production ERP connector, or additional container is required
 for the initial MVP. This preserves the synchronous pipeline allowed by TD-013.
 
-The external LLM provider and model have not yet been chosen. The provider must
-be configurable, use secrets outside version control, receive structured evidence,
-and fail without suppressing deterministic alerts (TD-008, TD-016, TD-018).
+The selected demo provider is TypeSafe AI with Jev (jev-latest).
+The provider-neutral LlmClient SPI now uses a System One HTTP adapter: sanitized
+state plus a typed choice question, rather than generated Chat Completions text.
+PEEK composes evidence-linked explanatory text from the selected hypothesis.
+The returned model version, choice confidence and probability distribution are
+kept separate from facts and human approval. Credentials remain exclusively in
+the backend environment; provider failure preserves deterministic alerts.
 
 ### Decisions still open
 
 - Exact dependency versions and build tooling when the projects are scaffolded.
 - API, event, and exception schemas, plus PostgreSQL table design.
-- External LLM provider/model and operational fallback configuration.
+- Production enablement and provider evaluation beyond fictitious demo data.
 - Authentication and deployment approach; neither is central to the demo.
 
 Avoid letting deployment work consume time needed for the end-to-end exception flow.
@@ -365,3 +371,24 @@ retry is rejected so an old payload cannot overwrite a newer canonical edit.
 A failure result is durable evidence, displayed using the existing EvidenceView
 contract; it does not imply a new canonical exception family. See V5 and
 `backend_api.md`.
+
+### TD-025 — Query-time E02 interpretation with a synthetic-only boundary
+
+**Status:** Implemented for issues #16 and #15.
+
+Intelligence projects existing detection evidence into JSON Schema v1.0, uses
+an isolated LlmClient SPI and validates both structure and contextual references.
+The HTTP adapter has configurable endpoint/model, bounded connection/total
+timeout, bounded response size, no redirects, no tools and no automatic retry.
+The selected TypeSafe transport validates typed choices, complete probability
+distributions and the actual model version. PEEK evidence templates provide prose;
+the UI distinguishes hypothesis probability from proof of cause. Backend schema
+and contextual validation remain mandatory. The default is disabled with fallback.
+External credentials can reach only the TypeSafe System One endpoint; HTTP
+loopback is reserved for mocks. See jev_contract.md for the chosen configuration.
+
+External calls require the demo profile, explicit synthetic-data opt-in, Demo
+products in the existing reset namespace and evidence from the simulated adapters.
+No source identity, free text or payload is transmitted. Existing E02 evidence,
+events, status, human-approval boundary and deterministic engine remain untouched.
+Interpretations are returned per query, not persisted/cached as operational truth.

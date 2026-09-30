@@ -522,57 +522,32 @@ A resolution may capture:
 
 ## 13. AI/JEV input contract
 
-AI should receive factual structured context.
-
-Example:
-
-```json
-{
-  "exception": {
-    "code": "E02",
-    "type": "PHYSICAL_STOCK_DIVERGENCE"
-  },
-  "expected_state": {
-    "stock": 95
-  },
-  "observed_state": {
-    "physical_count": 93
-  },
-  "evidence": [
-    "...normalized evidence..."
-  ],
-  "recent_events": [],
-  "configuration": {
-    "tolerance": 0
-  }
-}
-```
+The implemented contract is [jev_contract.md](jev_contract.md), version 1.0,
+with executable `jev-input.schema.json`. It separates `facts`, `calculations`,
+`expectedState`, `observedState`, `configuration` and bounded `recentEvents`.
+Only the existing E02 detection record and its referenced events are projected;
+current stock and later observations cannot overwrite that record. Raw metadata,
+identities, source payloads and real operational data are not sent externally.
 
 ---
 
 ## 14. AI/JEV output contract
 
-Prefer structured output.
+`jev-output.schema.json` requires summary, one main hypothesis with rationale
+and existing evidence references, impact and recommended action. At most two
+alternatives are accepted, each with contextual evidence and descending model
+ranking. Unsupported causes and invented references invalidate the response.
+The earlier generic `probable_causes` list was a conceptual example, not the
+accepted implementation contract.
 
-Example:
-
-```json
-{
-  "explanation": "The physical count is 2 units below the expected stock.",
-  "probable_causes": [
-    "unregistered movement",
-    "loss or breakage",
-    "counting error"
-  ],
-  "impact": "Available inventory may be overstated.",
-  "recommended_action": "Perform a recount and inspect recent movements.",
-  "confidence": 0.72
-}
-```
-
-The model must not fabricate source events.
-
-If confidence is used, it must be treated as model output, not as objective probability unless calibrated.
+The selected TypeSafe adapter emits `TYPESAFE_CHOICE_PROBABILITY`: the
+probability assigned to a hypothesis among the proposed options. The evaluation
+also preserves the full distribution, choice confidence and returned Jev version.
+These values do not prove a real-world cause. PEEK supplies evidence-linked
+explanatory templates; Jev selects among investigation hypotheses.
+`MODEL_SELF_REPORTED_RANKING` remains a legacy fixture meaning.
+`HYPOTHESIS_NOT_FACT` applies to all interpretations. Neither Jev nor the
+templates can alter facts, approve a checkpoint, resolve E02 or supply engine proof.
 
 ---
 
@@ -590,6 +565,12 @@ Exception type
 ```
 
 AI availability must never determine whether an objective exception exists.
+
+`JevService` returns `FALLBACK` with the recorded expected/physical values,
+static impact/recommendation and no model hypothesis/confidence when disabled,
+outside the fictitious demo boundary, misconfigured, missing valid context,
+timed out, refused, failed or invalid. Query-time interpretation is isolated
+from detection and persistence. See jev_contract.md for environment configuration.
 
 ---
 

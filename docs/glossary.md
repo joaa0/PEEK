@@ -150,7 +150,7 @@ The MVP uses available evidence and does not claim perfect reconstruction of rea
 
 ## JEV
 
-Name used in project discussions for the intelligent/AI evaluation layer used when a case requires contextual interpretation of multiple signals.
+The optional contextual interpretation layer in PEEK. The selected demo provider is TypeSafe AI's Jev model, called through its System One API. Jev evaluates typed investigation hypotheses; PEEK composes evidence-linked explanatory text and recommendations.
 
 JEV should not replace deterministic rules for objective conditions.
 

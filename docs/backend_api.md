@@ -201,6 +201,23 @@ and retries do not overwrite it. The frontend resolves an external product
 identity through the existing mapping endpoint, keeping absent/inactive
 mappings explicit.
 
+The same investigation response adds optional top-level `jev` for E02 (null
+for other families). It follows [jev_contract.md](jev_contract.md):
+`contractVersion`, `status`, `nature`, `summary`, `mainHypothesis`, `alternatives`,
+`impact`, `recommendedAction`, `fallbackReason`. An AVAILABLE main hypothesis
+contains code, statement, rationale, confidence `{value, meaning}` and UUIDs of
+existing evidence. All interpretation is labelled HYPOTHESIS_NOT_FACT. FALLBACK
+contains the static conclusion/recommendation, null mainHypothesis and empty
+alternatives, without invented model confidence. No exception field is replaced.
+The optional legacy flat UI/MCP projection remains compatible.
+
+Only this investigation query and the MCP interpretation projection may request
+external enrichment; detection, exception list/detail and engine verification do
+not call a model. Model failures still return HTTP 200 with usable factual context
+and FALLBACK. Missing exceptions retain the existing 404 behavior. Requests use
+only fictitious demo context and explicit backend configuration; no browser LLM
+call, LLM secret in frontend, migration, new domain event or new write route.
+
 ## Product registration propagation
 
 `POST /api/v1/products/{id}/propagations` accepts:

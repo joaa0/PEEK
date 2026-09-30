@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:peek:jev:output:1.0",
+  "title": "PEEK JEV hypotheses v1.0, never source evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "nature", "summary", "mainHypothesis", "alternatives", "impact", "recommendedAction"],
+  "properties": {
+    "contractVersion": {"const": "1.0"},
+    "nature": {"const": "HYPOTHESIS_NOT_FACT"},
+    "summary": {"$ref": "#/$defs/text"},
+    "mainHypothesis": {"$ref": "#/$defs/hypothesis"},
+    "alternatives": {"type": "array", "maxItems": 2, "items": {"$ref": "#/$defs/hypothesis"}},
+    "impact": {"$ref": "#/$defs/text"},
+    "recommendedAction": {"$ref": "#/$defs/text"},
+    "evaluation": {"$ref": "#/$defs/evaluation"}
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1, "maxLength": 800, "pattern": "\\S"},
+    "evaluation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "model", "confidence", "probabilities", "explanationSource"],
+      "properties": {
+        "provider": {"const": "TYPESAFE"},
+        "model": {"type": "string", "pattern": "^jev-[A-Za-z0-9.-]{1,80}$"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "explanationSource": {"const": "PEEK_EVIDENCE_TEMPLATES"},
+        "probabilities": {
+          "type": "object", "minProperties": 2, "maxProperties": 5,
+          "propertyNames": {"enum": ["COUNT_REQUIRES_VERIFICATION", "MOVEMENT_RECORDING_GAP", "RECEIPT_RECORDING_GAP", "ADJUSTMENT_REQUIRES_REVIEW", "UNEXPLAINED_DIVERGENCE"]},
+          "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "hypothesis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "statement", "rationale", "confidence", "evidenceIds"],
+      "properties": {
+        "code": {"enum": ["COUNT_REQUIRES_VERIFICATION", "MOVEMENT_RECORDING_GAP", "RECEIPT_RECORDING_GAP", "ADJUSTMENT_REQUIRES_REVIEW", "UNEXPLAINED_DIVERGENCE"]},
+        "statement": {"$ref": "#/$defs/text"},
+        "rationale": {"$ref": "#/$defs/text"},
+        "confidence": {
+          "type": "object", "additionalProperties": false, "required": ["value", "meaning"],
+          "properties": {"value": {"type": "number", "minimum": 0, "maximum": 1}, "meaning": {"enum": ["MODEL_SELF_REPORTED_RANKING", "TYPESAFE_CHOICE_PROBABILITY"]}}
+        },
+        "evidenceIds": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "pattern": "^e[1-9][0-9]?$"}}
+      }
+    }
+  }
+}

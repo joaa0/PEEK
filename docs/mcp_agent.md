@@ -19,9 +19,13 @@ recommendedAction, decisionFingerprint) separado de `jevInterpretation`.
 O contrato opcional JevAnalysis da UI é projetado em explanation, probableCauses,
 supportingEvidence, operationalImpact, recommendedAction e confidence, sempre
 com nature=HYPOTHESIS_NOT_FACT. Referências sem evidência real são removidas.
-A main ainda não implementa provedor/armazenamento JEV: retorna UNAVAILABLE e
-recomendação estática, sem inventar confiança. JevContextService aceita uma fonte
-opcional do mesmo contrato; não chama LLM nem participa da detecção/correção.
+A integração #15 fornece JevAnalysisSource, uma projeção do contrato estruturado
+1.0 em [jev_contract.md](jev_contract.md). Com configuração válida e dados
+fictícios de demo, a consulta pode interpretar E02 por API externa. Principal e
+justificativa são apresentadas juntas, com confiança explicitamente rotulada como
+probabilidade entre hipóteses avaliadas pela TypeSafe (TYPESAFE_CHOICE_PROBABILITY); não prova a causa. O modelo e a origem dos textos do PEEK são identificados. Ausência/falha retorna UNAVAILABLE e recomendação estática,
+sem inventar confiança. JevContextService continua apenas como projeção;
+detecção/correção/aprovação não dependem do modelo. Não há armazenamento JEV.
 
 Antes da escrita, Codex deve mostrar **FACTS / EVIDENCE** e **JEV INTERPRETATION**,
 explicar a ação concreta, perguntar e aguardar autorização afirmativa. Silêncio,
@@ -61,17 +65,32 @@ As consultas apenas leem a prova E02 (ou registram falha/timeout); nunca a fabri
 ### Demo E02
 
 Inicie backend/MCP conforme abaixo, com scheduler habilitado e banco local fictício.
-Configure tolerância física 0 no banco local de demo (o padrão da main é 1):
+O cenário diverge com a tolerância padrão 1; mantenha a tolerância configurada
+abaixo de 2 para esta fixture, sem precisar alterar a configuração padrão:
 
 ```bash
-docker compose exec postgres psql -U peek -d peek \
-  -c "UPDATE demo_configuration SET physical_stock_tolerance = 0 WHERE id = 1;"
 node scripts/mcp-e02-demo.mjs prepare
 ```
 
-O operador cria produto/mapping, baseline 100, venda 5 e contagem confirmada 93
-pelo MockPhysicalAdapter existente. EvaluationService gera E02 com esperado 95,
-físico 93, delta -2 e tolerância 0. O driver imprime contexto, exceptionId e prompt.
+O operador cria produto categoria Demo, SKU `SKU-E02-DEMO-E02-<uuid>` e mappings
+independentes para estoque e vendas. Baseline 100, venda 5 e contagem confirmada 93
+entram pelos MockInventoryAdapter, MockSalesAdapter e MockPhysicalAdapter existentes.
+EvaluationService gera E02 com esperado 95,
+físico 93, delta -2 e a tolerância configurada. O driver imprime contexto, exceptionId e prompt.
+O runId impresso é compatível com o reset existente. A conexão MCP é verificada
+antes de criar fixtures; o driver não usa ingestão canônica direta para simular origem.
+
+Para demonstrar JEV ativo, inicie os perfis **demo,mcp** juntos e configure
+as variáveis descritas em jev_contract.md. Depois execute:
+
+```bash
+node scripts/mcp-e02-demo.mjs prepare --require-jev
+```
+
+Esse smoke check exige AVAILABLE no MCP e no REST. Se houver fallback, imprime
+o motivo seguro e termina com erro, preservando a E02 OPEN sem ação do agente.
+O prepare comum continua aceitando fallback. Cada consulta pode interpretar
+novamente; os resultados não são persistidos como fatos.
 
 No Codex, use o prompt impresso. Revise o caso antes de responder "sim, autorizo
 a aceitação desse checkpoint". O Codex deve usar fingerprint e uma chave estável,
@@ -94,8 +113,10 @@ nunca aprova pelo humano e nunca fabrica um evento de correção/confirmação.
 Os testes PostgreSQL verificam também ausência de comandos/eventos novos.
 
 O Codex App/CLI investiga e solicita uma contramedida. O PEEK mantém o domínio,
-as evidências e a decisão final. O backend não chama OpenAI nem precisa de API
-paga. O Codex é executado separadamente, autenticado pela conta do usuário.
+as evidências e a decisão final. O caminho padrão não precisa de API paga;
+a interpretação externa opcional usa configuração independente e exclusivamente
+dados de demo conforme jev_contract.md. O Codex é executado separadamente,
+autenticado pela conta do usuário.
 
 ## Arquitetura e reutilização
 
@@ -202,8 +223,27 @@ O perfil inicia backend + MCP no mesmo processo. Sem esse perfil o backend
 continua disponível e /mcp não é registrado. Use o mesmo token no ambiente do
 Codex; não o inclua em commits, prompts ou logs.
 
+Para JEV + Agent, use `-Dspring-boot.run.profiles=demo,mcp` no mesmo comando,
+com PEEK_LLM_ENABLED=true, PEEK_LLM_SYNTHETIC_DEMO=true e endpoint/modelo/chave
+definidos no ambiente do backend. O perfil mcp sozinho preserva fallback e
+não habilita envio de dados. Use relógio real para o roteiro humano; o relógio
+fixo documentado nos testes de navegador pertence àqueles testes.
+
+Em PowerShell, na raiz, com as variáveis de LLM já configuradas:
+
+```powershell
+$env:PEEK_MCP_TOKEN = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+mvn.cmd -f backend/pom.xml spring-boot:run '-Dspring-boot.run.profiles=demo,mcp'
+```
+
+O terminal do Codex e o driver precisam receber o mesmo PEEK_MCP_TOKEN;
+gerar outro token em cada terminal não conecta os processos.
+
 Copie o trecho de [codex-mcp.example.toml](codex-mcp.example.toml) para
-`~/.codex/config.toml`. Alternativamente:
+`~/.codex/config.toml`. O exemplo inclui `peek_apply_e02_reconciliation` na
+allowlist. Se você copiou uma versão anterior, acrescente essa ferramenta à
+configuração existente. Ela exige aprovação humana por ocorrência; habilitá-la
+não concede aprovação. Alternativamente:
 
 ```bash
 codex mcp add peek --url http://127.0.0.1:8080/mcp --bearer-token-env-var PEEK_MCP_TOKEN
@@ -308,6 +348,13 @@ cd backend
 mvn test
 mvn verify
 ```
+
+Na raiz, `node --test scripts/mcp-e02-demo.test.mjs` valida o roteiro, os
+adapters/mappings fictícios, o smoke check, a negativa e a allowlist do exemplo.
+JevIntegrationIT cobre também JEV HTTP mockado + MCP + aprovação simulada
+exclusivamente em teste + avaliação determinística posterior, mantendo a prova,
+o histórico e o comportamento de fallback. Uma sessão real nunca reaproveita
+a aprovação simulada de um teste.
 
 mvn verify usa o banco isolado peek_test e as variáveis PEEK_TEST_DB_* já
 documentadas no README. Os testes novos cobrem o protocolo/allowlist,
